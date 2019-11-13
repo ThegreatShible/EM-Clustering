@@ -16,8 +16,12 @@ EM <- function(X, K, nb_init=10) {
     nk = sum(tk)
     pk = nk / n
     mean_k = apply(X * tk, 2, sum) / nk
-    centered = apply(X, 1, function(i) i - mean_k)
-    sd_k = sum(tk * apply(centered, 1, function(i) sum(i^2))) / nk
+    X_centered = apply(X, 1, function(i) i - mean_k)
+    sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
+    inv_sd_k = solve(sd_k)
+    det_sd_k = det(sd_k)
+    
+    Q = Q + sum(apply(X_centered, 1, function(i) log(pk) - p * log(2 * pi) / 2 - log(det_sd_k) / 2 - (t(i) %*% inv_sd_k %*% i)))
   }
 }
 
