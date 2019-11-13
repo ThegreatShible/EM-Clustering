@@ -1,3 +1,5 @@
+library(plot3D)
+
 # This functions generates a dataset according to 2 gaussian laws
 # and then gives conditionnal probabilities that elements belong
 # to each class with classify function.
