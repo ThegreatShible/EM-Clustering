@@ -34,22 +34,25 @@ EM <- function(X, K, nb_init=10) {
   d = ncol(X)
   n = nrow(X)
   
-  theta = rep(list(
-    mean = rep(0, d),
-    sd = matrix(0, ncol=d, nrow=d)),
-  k)
-  theta
+  theta = init_theta(d, k)
+  proba = classify(X, theta)
+  
   # E-step
   # Store all the likelihoods in a N x k amtrix
   Q = 0
   for (k in 1:K) {
-    fk <- dnorm(mean=m[k,], sd=s[[k]])
-    for (i in 1:n) {
-      
-    }
+    # Refer to slide 68/90 for math detail
+    tk = proba[,k]
+    nk = sum(tk)
+    pk = nk / n
+    mean_k = apply(X * tk, 2, sum) / nk
+    centered = apply(X, 1, function(i) i - mean_k)
+    sd_k = sum(tk * apply(centered, 1, function(i) sum(i^2))) / nk
   }
 }
 
+# Returns a list of length k
+# Each element contains a vector of mean and a matrix of variance
 init_theta <- function(d, k) {
   m = rep(0,d)
   s = matrix(0, d, d)
@@ -58,6 +61,8 @@ init_theta <- function(d, k) {
   return(theta)
 }
 
+# Returns matrices of size n x k of probabilities
+# of each element belonging to each class
 classify <- function(X, theta) {
   n = nrow(X)
   d = ncol(X)
@@ -67,6 +72,8 @@ classify <- function(X, theta) {
   return(proba)
 }
 
+# Equivalent of function dnorm but takes as inputs
+# a vector of mean and a matrix of standard deviation
 mdnorm <- function(X, mean, sd) {
   X = matrix(X, ncol=length(mean))
   p = length(mean)
@@ -76,14 +83,9 @@ mdnorm <- function(X, mean, sd) {
   return((1 / a) * exp(b))
 }
 
-visualize_3d_gaussian <- function(n=5000) {
+# Plots a 2D gaussian law representation in 3D
+visualize_2d_gaussian_law <- function(n=5000) {
   X = cbind(runif(n,-3,3), runif(n,-3,3))
   y = mdnorm(X, c(0,0), diag(c(1,1)))
   points3D(X[,1], X[,2], y)
 }
-
-"
-l'idée est de :
-
-- choisir k theta random
-"
