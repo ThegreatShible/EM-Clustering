@@ -10,7 +10,7 @@ EM <- function(X, K, nb_init=10) {
   proba = classify(theta, Xc, Xq)
   
   # E-step
-  # Store all the likelihoods in a N x k amtrix
+  # Store all the likelihoods in a N x k matrix
   Q = 0
   for (k in 1:K) {
     # Refer to slide 68/90 for math detail
@@ -39,7 +39,7 @@ init_theta <- function(d, k) {
 
 # Returns matrices of size n x k of probabilities
 # of each element belonging to each class
-classify <- function(thetas, Xc=NULL, Xq=NULL) {
+E_Step <- function(thetas, Xc=NULL, Xq=NULL) {
   if (!is.null(Xc)) n = nrow(Xc)
   else {
     if (!is.null(Xq)) n = nrow(Xq)
@@ -68,7 +68,7 @@ mdnorm <- function(X, mean, sd) {
 }
 
 multinomial <- function(X, alpha) {
-  # alpha est un vecteur de taille la somme des nombres de modalités de toutes les variables
+  # alpha est un vecteur de taille la somme des nombres de modalit?s de toutes les variables
   if (is.null(X)) return(1)
   
   nb_modalities = sum(apply(X, 2, function(c) length(levels(factor(c)))))
@@ -94,3 +94,83 @@ one_hot <- function(x) {
     res
   }))
 }
+
+#TODO
+M_Step <- function(Xc, Xq, Z, model){
+  
+  if(!is.null(Xc)) {
+    alphas_sum = rowsum(Xc)
+    alphas = alphas_sum/ r 
+  }
+  
+}
+
+
+clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
+  newX = splitByVarType(X)
+  Xc = newX$cat
+  Xq = newX$quant
+  if(is.numeric(nbClust)) nbClusts = 1:nbClust
+  else nbClusts = nbClust
+  i  = 0
+  for(model in models) {
+    for (K in nbClusts){
+      thetas_0 = init_thetas(Xc, Xq, initMethod, nbInit, K)
+      best_likelihood = -Inf
+      best_theta = NULL
+      for(theta_0 in thetas_0){
+        em = EM(Xc, Xq, theta_0, model, epsilon)
+        if(em$likelihood > best_likelihood){
+          best_likelihood = em$likelihood
+          best_em = em
+        }
+      }
+      bic = BIC(Xq, model, best_likelihood)
+      icl = ICL(bic, best_em$Z)
+      res_i = list(model=model, nbClusters=K, theta=best_em$theta, bic=bic, icl=icl, Z=best_em$Z)
+      res[[i]] = res_i
+      i = i+1
+    }
+  }
+  return(res)
+}
+
+BIC <- function(Xq, model, likelihood){
+  
+}
+
+ICL <- function(bic, Z){
+  log_z = log(Z)
+  e_m <- sum((Z*log_z))
+  return(bic + e_m )
+}
+
+splitByVarType <- function(X) {
+  
+}
+
+init_thetas <- function(Xc, Xq, initMethod, nbInit, K){
+  
+}
+
+EM <- function(Xc, Xq, theta_0, model, epsilon){
+  last_likelihood = -Inf
+  current_likelihood= -Inf
+  theta = theta_0
+  repeat{
+    last_likelihood = current_likelihood
+    Z <- E_Step(Xc, Xq, theta, model)
+    new_theta = M_step(Xc, Xq, Z, model)
+    current_likelihood = processLikelihood(Xc, Xq, Z, theta)
+    theta = new_theta
+    if(current_likelihood - last_likelihood < epsilon )
+      break
+  }
+  res = list(likelihood= current_likelihood, Z=Z, theta= new_theta)
+  return(res)
+}
+
+processlikelihood <- function(Xc, Xq, Z, theta){
+  
+}
+
