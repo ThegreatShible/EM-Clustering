@@ -136,9 +136,13 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
 }
 
 BIC <- function(Xq, model, likelihood){
+  n <- nrow(Xq)
+  nb_par = getNbParameters(Xq, model)
+  return(-2*likelihood + nb_par* log(n))
+}
+getNbParameters <- function(Xq, model) {
   
 }
-
 ICL <- function(bic, Z){
   log_z = log(Z)
   e_m <- sum((Z*log_z))
