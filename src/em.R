@@ -125,7 +125,7 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
           best_em = em
         }
       }
-      bic = BIC(Xq, model, best_likelihood)
+      bic = BIC(Xq, model, best_likelihood,K)
       icl = ICL(bic, best_em$Z)
       res_i = list(model=model, nbClusters=K, theta=best_em$theta, bic=bic, icl=icl, Z=best_em$Z)
       res[[i]] = res_i
@@ -135,13 +135,31 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
   return(res)
 }
 
-BIC <- function(Xq, model, likelihood){
+BIC <- function(Xq, model, likelihood, K){
   n <- nrow(Xq)
   nb_par = getNbParameters(Xq, model)
   return(-2*likelihood + nb_par* log(n))
 }
-getNbParameters <- function(Xq, model) {
-  
+getNbParameters <- function(Xq, model, K) {
+  nbUs <- ncol(Xq)
+  res = K + K*nbUs
+  nbVar = 0
+  if(model == "EII"){
+    nbVar=1
+  }else if (model == "VII") nbVar = K
+  else if (model == "EEI") nbVar = nbUs
+  else if (model == "VEI") nbVar = nbUs + K -1
+  else if (model == "EVI") nbVar = 1 + K*(nbUs-1)
+  else if (model == "VVI") nbVar =K*nbUs
+  else if (model == "EEE") nbVar =nbUs * (nbUs+1)/2
+  else if (model == "VEE" ) nbVar = K + (nbUs+2)*(nbUs-1)/2
+  else if(model == "EVE") nbVar = 1 + (nbUs + 2*K)(nbUs-1)/2
+  else if (model =="EEV") nbVar = 1 + (nbUs-1) + K*(nbUs*(nbUs-1)/2)
+  else if (model == "VVE") nbVar = K + (nbUs+2*K)*(nbUs-1)/2
+  else if (model =="EVV") nbVar = 1 + K*(nbUs + 2)*(nbUs-1)/2
+  else if (model == "VEV") nbVar = K+ (nbUs-1)+ K*(nbUs*(nbUs-1)/2)
+  else nbVar = K*(nbUs*(nbUs+1)/2)
+  return (res+nbVar)
 }
 ICL <- function(bic, Z){
   log_z = log(Z)
