@@ -11,20 +11,7 @@ EM <- function(X, K, nb_init=10) {
   
   # E-step
   # Store all the likelihoods in a N x k matrix
-  Q = 0
-  for (k in 1:K) {
-    # Refer to slide 68/90 for math detail
-    tk = proba[,k]
-    nk = sum(tk)
-    pk = nk / n
-    mean_k = apply(X * tk, 2, sum) / nk
-    X_centered = apply(X, 1, function(i) i - mean_k)
-    sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
-    inv_sd_k = solve(sd_k)
-    det_sd_k = det(sd_k)
-    
-    Q = Q + sum(apply(X_centered, 1, function(i) log(pk) - p * log(2 * pi) / 2 - log(det_sd_k) / 2 - (t(i) %*% inv_sd_k %*% i)))
-  }
+
 }
 
 # Returns a list of length k
@@ -193,6 +180,30 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
 }
 
 processlikelihood <- function(Xc, Xq, Z, theta){
-  
+  Q = 0
+  for (k in 1:K) {
+    # Refer to slide 68/90 for math detail
+    
+    # Refer to slide 59/90 for math detail
+    # tk = Z[,k]
+    # nk = sum(tk)
+    # pk = nk / n
+    mean_k = theta[[k]]$mean
+    # mean_k = apply(Xc * tk, 2, sum) / nk
+    # X_centered = apply(Xc, 1, function(i) i - mean_k)
+    sd_k = theta[[k]]$sd
+    # sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
+    # inv_sd_k = solve(sd_k)
+    # det_sd_k = det(sd_k)
+    alpha_k = theta[[k]]$alpha
+    
+    Q = Q + sum(apply(X_centered, 1, function(i) {
+      #log(pk) - p * log(2 * pi) / 2 - log(det_sd_k) / 2 - (t(i) %*% inv_sd_k %*% i)
+      fk_q = mdnorm(Xq, mean_k, sd_k)
+      fk_c = multinomial(Xc, alpha_k)
+      z[i,k] * (log(fk_q) + log(fk_c))
+    }))
+  }
+  return(Q)
 }
 
