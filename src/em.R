@@ -121,8 +121,14 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
   Xq = newX$quant
   #if(is.numeric(nbClust)) nbClusts = 1:nbClust
   #else nbClusts = nbClust
+  
+  # res is a list for all models
+  res = list()
   i  = 0
   for(model in models) {
+    j = 0
+    # A particular model is a sub list for all clusters
+    res[[i]] = list()
     for (K in nbClusts){
       thetas_0 = init_thetas(Xc, Xq, initMethod, nbInit, K)
       best_likelihood = -Inf
@@ -137,9 +143,10 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
       bic = BIC(Xq, model, best_likelihood,K)
       icl = ICL(bic, best_em$Z)
       res_i = list(model=model, nbClusters=K, theta=best_em$theta, bic=bic, icl=icl, Z=best_em$Z)
-      res[[i]] = res_i
-      i = i+1
+      res[[i]][[j]] = res_i
+      j = j+1
     }
+    i = i+1
   }
   return(res)
 }
