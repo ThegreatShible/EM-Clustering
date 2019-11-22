@@ -184,7 +184,10 @@ ICL <- function(bic, Z){
 }
 
 splitByVarType <- function(X) {
-  
+  num = apply(X, 2, is.numeric)
+  Xq = X[,num]
+  Xc = X[,!num]
+  return(list(Xc=Xc, Xq=Xq))
 }
 
 init_thetas <- function(Xc, Xq, initMethod, nbInit, K){
