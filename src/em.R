@@ -6,7 +6,7 @@ EM <- function(X, K, nb_init=10) {
   
   # TODO : split X into Xc and Xq
   
-  theta = init_theta(d, k)
+  theta = create_theta(d, k)
   proba = classify(theta, Xc, Xq)
   
   # E-step
@@ -15,11 +15,17 @@ EM <- function(X, K, nb_init=10) {
 }
 
 # Returns a list of length k
-# Each element contains a vector of mean and a matrix of variance
-init_theta <- function(d, k) {
-  m = rep(0,d)
-  s = matrix(0, d, d)
-  t = list(mean=m, sd=s)
+# Each element contains a vector of mean, a matrix of variance,
+# a vector alphas of length the total number of modalities and
+# a propobability pk
+create_theta <- function(dq, dc, k) {
+  # dq : Dimension of quantitative variables
+  # dc : Number of modalities of all categorial variables
+  m = rep(NA,dq)
+  s = matrix(NA, dq, dq)
+  p = NA
+  a = rep(NA, dc)
+  t = list(mean=m, sd=s, p=p, alpha=a)
   theta = rep(list(t), k)
   return(theta)
 }
@@ -50,11 +56,16 @@ mdnorm <- function(X, mean, sd) {
   return((1 / a) * exp(b))
 }
 
+get_nb_modalities <- function(X) {
+  if (is.null(X)) return(0)
+  return(sum(apply(X, 2, function(c) length(levels(factor(c))))))
+}
+
 multinomial <- function(X, alpha) {
   # alpha est un vecteur de taille la somme des nombres de modalit?s de toutes les variables
   if (is.null(X)) return(1)
   
-  nb_modalities = sum(apply(X, 2, function(c) length(levels(factor(c)))))
+  nb_modalities = get_nb_modalities(X)
   len_alpha = length(alpha)
   if (nb_modalities != len_alpha)
     stop(paste(c("Number of modalities (", nb_modalities, ") is different from the number of values in alpha (", len_alpha, ")"), collapse=""))
@@ -81,6 +92,20 @@ one_hot <- function(x) {
 #TODO
 M_Step <- function(Xc, Xq, Z, model){
   
+  # Temporary : To be moved to VVV model
+  
+  for (k in seq_along(ncol(Z))) {
+    tk = Z[,k]
+    nk = sum(tk)
+    pk = nk / n
+    mean_k = apply(Xc * tk, 2, sum) / nk
+    X_centered = apply(Xc, 1, function(i) i - mean_k)
+    sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
+    theta[[k]]$p = pk
+    theta[[k]]$mean = mean_k
+    theta[[k]]$sd = sd_k
+  }
+    
   if(!is.null(Xc)) {
     alphas_sum = rowsum(Xc)
     alphas = alphas_sum/ r 
