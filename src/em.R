@@ -119,8 +119,8 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
   newX = splitByVarType(X)
   Xc = newX$cat
   Xq = newX$quant
-  if(is.numeric(nbClust)) nbClusts = 1:nbClust
-  else nbClusts = nbClust
+  #if(is.numeric(nbClust)) nbClusts = 1:nbClust
+  #else nbClusts = nbClust
   i  = 0
   for(model in models) {
     for (K in nbClusts){
