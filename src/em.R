@@ -93,8 +93,10 @@ one_hot <- function(x) {
 M_Step <- function(Xc, Xq, Z, model){
   
   # Temporary : To be moved to VVV model
-  
-  for (k in seq_along(ncol(Z))) {
+  K = ncol(Z)
+
+  theta = create_theta(ncol(Xq), ncol(Xc), K)
+  for (k in seq_along(K)) {
     tk = Z[,k]
     nk = sum(tk)
     pk = nk / n
@@ -104,13 +106,12 @@ M_Step <- function(Xc, Xq, Z, model){
     theta[[k]]$p = pk
     theta[[k]]$mean = mean_k
     theta[[k]]$sd = sd_k
-  }
     
-  if(!is.null(Xc)) {
-    alphas_sum = rowsum(Xc)
-    alphas = alphas_sum/ r 
+    if(!is.null(Xc)) {
+      theta[[k]]$alpha = sum(tk * Xc) / nrow(Xc)
+    }
   }
-  
+  return(theta)
 }
 
 
