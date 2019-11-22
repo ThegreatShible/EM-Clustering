@@ -33,11 +33,7 @@ E_Step <- function(thetas, Xc=NULL, Xq=NULL) {
     else stop("Dataset is empty")
   }
   proba = apply(matrix(seq_along(thetas), nrow=1), 2, function(i) multinomial(Xq, thetas[[i]]$alpha) * thetas[[i]]$p * mdnorm(Xc, thetas[[i]]$mean, thetas[[i]]$sd))
-  
-  # TODO : To check, but in theory the following line can be deleted
-  # It was there to balance probabilities before I put the pk (thetas[[i]]$p) in the line above
-  
-  # proba = t(apply(proba, 1, function(i) i / sum(i)))
+  proba = t(apply(proba, 1, function(i) i / sum(i)))
   
   return(proba)
 }
