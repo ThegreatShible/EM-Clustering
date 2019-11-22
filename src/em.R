@@ -1,6 +1,6 @@
 library(plot3D)
 
-EM <- function(X, K, nb_init=10) {
+EMtmp <- function(X, K, nb_init=10) {
   d = ncol(X)
   n = nrow(X)
   
@@ -32,13 +32,13 @@ create_theta <- function(dq, dc, k) {
 
 # Returns matrices of size n x k of probabilities
 # of each element belonging to each class
-E_Step <- function(thetas, Xc=NULL, Xq=NULL) {
-  if (!is.null(Xc)) n = nrow(Xc)
+E_Step <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
+  if (!is.null(Xq)) n = nrow(Xq)
   else {
-    if (!is.null(Xq)) n = nrow(Xq)
+    if (!is.null(Xc)) n = nrow(Xc)
     else stop("Dataset is empty")
   }
-  proba = apply(matrix(seq_along(thetas), nrow=1), 2, function(i) multinomial(Xq, thetas[[i]]$alpha) * thetas[[i]]$p * mdnorm(Xc, thetas[[i]]$mean, thetas[[i]]$sd))
+  proba = apply(matrix(seq_along(thetas), nrow=1), 2, function(i) multinomial(Xc, thetas[[i]]$alpha) * thetas[[i]]$p * mdnorm(Xq, thetas[[i]]$mean, thetas[[i]]$sd))
   proba = t(apply(proba, 1, function(i) i / sum(i)))
   
   return(proba)
@@ -47,8 +47,8 @@ E_Step <- function(thetas, Xc=NULL, Xq=NULL) {
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
 mdnorm <- function(X, mean, sd) {
-  if (is.null(X)) return(1)
-  X = matrix(X, ncol=length(mean))
+  if (ncol(X) == 0) return(1)
+  #X = matrix(X, ncol=length(mean))
   p = length(mean)
   inv_sd = solve(sd)
   a = ((2 * pi) ^ (p / 2)) * (det(sd) ^ (1/2))
@@ -57,25 +57,25 @@ mdnorm <- function(X, mean, sd) {
 }
 
 get_nb_modalities <- function(X) {
-  if (is.null(X)) return(0)
+  if (ncol(X) == 0) return(0)
   return(apply(X, 2, function(c) length(levels(factor(c)))))
 }
 
 multinomial <- function(X, alpha) {
   # alpha est un vecteur de taille la somme des nombres de modalit?s de toutes les variables
-  if (is.null(X)) return(1)
+  n = nrow(X)
+  if (ncol(X) == 0) return(rep(1, n))
   
   nb_modalities = sum(get_nb_modalities(X))
   len_alpha = length(alpha)
   if (nb_modalities != len_alpha)
     stop(paste(c("Number of modalities (", nb_modalities, ") is different from the number of values in alpha (", len_alpha, ")"), collapse=""))
   
-  X_hot = NULL
+  X_hot = matrix(NA, nrow=n, ncol=0)
   p = ncol(X)
-  for (j in 1:p) {
+  for (j in seq(p)) {
     X_hot = cbind(X_hot, one_hot(factor(X[,j])))
   }
-  print(X_hot)
   return(apply(X_hot, 1, function(i) prod(alpha ^ i)))
 }
 
@@ -90,24 +90,27 @@ one_hot <- function(x) {
 }
 
 #TODO
-M_Step <- function(Xc, Xq, Z, model){
+M_step <- function(Xc, Xq, Z, model){
   
   # Temporary : To be moved to VVV model
   K = ncol(Z)
-
+  n = nrow(Xc)
+  
   theta = create_theta(ncol(Xq), ncol(Xc), K)
-  for (k in seq_along(K)) {
+  for (k in seq(K)) {
     tk = Z[,k]
     nk = sum(tk)
     pk = nk / n
-    mean_k = apply(Xc * tk, 2, sum) / nk
-    X_centered = apply(Xc, 1, function(i) i - mean_k)
-    sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
+    mean_k = apply(Xq * tk, 2, sum) / nk
+    X_centered = t(apply(Xq, 1, function(i) i - mean_k))
+    X_c_k = X_centered * tk
+    #sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
+    sd_k = (t(X_c_k) %*% (X_c_k)) / n
     theta[[k]]$p = pk
     theta[[k]]$mean = mean_k
     theta[[k]]$sd = sd_k
     
-    if(!is.null(Xc)) {
+    if(ncol(Xc) > 0) {
       theta[[k]]$alpha = sum(tk * Xc) / nrow(Xc)
     }
   }
@@ -116,7 +119,7 @@ M_Step <- function(Xc, Xq, Z, model){
 
 
 clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
-  newX = splitByVarType(X)
+  newX = split_by_var_type(X)
   Xc = newX$Xc
   Xq = newX$Xq
   #if(is.numeric(nbClust)) nbClusts = 1:nbClust
@@ -140,9 +143,11 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
           best_em = em
         }
       }
-      bic = BIC(Xq, model, best_likelihood,K)
-      icl = ICL(bic, best_em$Z)
-      res_i = list(model=model, nbClusters=K, theta=best_em$theta, bic=bic, icl=icl, Z=best_em$Z)
+      #bic = BIC(Xq, model, best_likelihood,K)
+      #icl = ICL(bic, best_em$Z)
+      res_i = list(model=model, nbClusters=K, theta=best_em$theta, 
+                   #bic=bic, icl=icl, 
+                   Z=best_em$Z)
       res[[i]][[j]] = res_i
       j = j+1
     }
@@ -183,7 +188,7 @@ ICL <- function(bic, Z){
   return(bic + e_m )
 }
 
-splitByVarType <- function(X) {
+split_by_var_type <- function(X) {
   num = unlist(lapply(X, is.numeric))
   Xq = X[,num]
   Xc = X[,!num]
@@ -192,7 +197,6 @@ splitByVarType <- function(X) {
 
 init_thetas <- function(Xc, Xq, initMethod, nbInit, K){
   modalities = get_nb_modalities(Xc)
-  print(modalities)
   dc = sum(modalities)
   dq = ncol(Xq)
   inits = rep(list(create_theta(dq, dc, K)))
@@ -208,8 +212,6 @@ init_thetas <- function(Xc, Xq, initMethod, nbInit, K){
         # TODO : How should a random sd look ? diagonal ? triangular ? full (hmm no) ?
         inits[[i]][[k]]$sd = diag(unlist(lapply(1:dq, function(l) runif(1, 0, maxX[l] - minX[l]))))
         inits[[i]][[k]]$p = p[k]
-        # TODO : If there are no categorial variables the line below still produces at least one value
-        # not very important but would be cleaner without that
         inits[[i]][[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
       }
     }
@@ -223,19 +225,22 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
   theta = theta_0
   repeat{
     last_likelihood = current_likelihood
-    Z <- E_Step(Xc, Xq, theta, model)
+    Z <- E_Step(theta, Xc, Xq, model)
     new_theta = M_step(Xc, Xq, Z, model)
-    current_likelihood = processLikelihood(Xc, Xq, Z, theta)
+    current_likelihood = process_likelihood(Xc, Xq, Z, theta)
     theta = new_theta
-    if(current_likelihood - last_likelihood < epsilon )
+    print(current_likelihood)
+    print(last_likelihood)
+    if (current_likelihood - last_likelihood < epsilon)
       break
   }
   res = list(likelihood= current_likelihood, Z=Z, theta= new_theta)
   return(res)
 }
 
-processlikelihood <- function(Xc, Xq, Z, theta){
+process_likelihood <- function(Xc, Xq, Z, theta){
   Q = 0
+  K = length(theta)
   for (k in 1:K) {
     # Refer to slide 68/90 for math detail
     
@@ -245,19 +250,23 @@ processlikelihood <- function(Xc, Xq, Z, theta){
     # pk = nk / n
     mean_k = theta[[k]]$mean
     # mean_k = apply(Xc * tk, 2, sum) / nk
-    # X_centered = apply(Xc, 1, function(i) i - mean_k)
+    X_centered = t(apply(Xq, 1, function(i) i - mean_k))
     sd_k = theta[[k]]$sd
     # sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
     # inv_sd_k = solve(sd_k)
     # det_sd_k = det(sd_k)
     alpha_k = theta[[k]]$alpha
     
-    Q = Q + sum(apply(X_centered, 1, function(i) {
-      #log(pk) - p * log(2 * pi) / 2 - log(det_sd_k) / 2 - (t(i) %*% inv_sd_k %*% i)
-      fk_q = mdnorm(Xq, mean_k, sd_k)
-      fk_c = multinomial(Xc, alpha_k)
-      z[i,k] * (log(fk_q) + log(fk_c))
-    }))
+    fk_q = mdnorm(Xq, mean_k, sd_k)
+    fk_c = multinomial(Xc, alpha_k)
+    log_fk = log(fk_q) + log(fk_c)
+    
+    Q = Q + sum(Z[,k] * log_fk)
+    
+    # Q = Q + sum(apply(X_centered, 1, function(i) {
+    #   #log(pk) - p * log(2 * pi) / 2 - log(det_sd_k) / 2 - (t(i) %*% inv_sd_k %*% i)
+    #   Z[i,k] * log_fk
+    # }))
   }
   return(Q)
 }
