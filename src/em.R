@@ -229,6 +229,8 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     new_theta = M_step(Xc, Xq, Z, model)
     current_likelihood = process_likelihood(Xc, Xq, Z, new_theta)
     theta = new_theta
+    if (current_likelihood < last_likelihood)
+      stop("New likelihood is inferior to previous one : Suspicious...")
     if (current_likelihood != -Inf & current_likelihood - last_likelihood < epsilon)
       break
   }
