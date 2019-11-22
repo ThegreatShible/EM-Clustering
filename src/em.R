@@ -58,14 +58,14 @@ mdnorm <- function(X, mean, sd) {
 
 get_nb_modalities <- function(X) {
   if (is.null(X)) return(0)
-  return(sum(apply(X, 2, function(c) length(levels(factor(c))))))
+  return(apply(X, 2, function(c) length(levels(factor(c)))))
 }
 
 multinomial <- function(X, alpha) {
   # alpha est un vecteur de taille la somme des nombres de modalit?s de toutes les variables
   if (is.null(X)) return(1)
   
-  nb_modalities = get_nb_modalities(X)
+  nb_modalities = sum(get_nb_modalities(X))
   len_alpha = length(alpha)
   if (nb_modalities != len_alpha)
     stop(paste(c("Number of modalities (", nb_modalities, ") is different from the number of values in alpha (", len_alpha, ")"), collapse=""))
@@ -191,7 +191,30 @@ splitByVarType <- function(X) {
 }
 
 init_thetas <- function(Xc, Xq, initMethod, nbInit, K){
-  
+  modalities = get_nb_modalities(Xc)
+  print(modalities)
+  dc = sum(modalities)
+  dq = ncol(Xq)
+  inits = rep(list(create_theta(dq, dc, K)))
+  if (initMethod == "random") {
+    minX = apply(Xq, 2, min)
+    maxX = apply(Xq, 2, max)
+    for (i in seq_along(inits)) {
+      p = runif(K)
+      p = p / sum(p)
+      for (k in seq_along(inits[[i]])) {
+        # generate Means and deviation between min and max of each dimension
+        inits[[i]][[k]]$mean = unlist(lapply(1:dq, function(l) runif(1, minX[l], maxX[l])))
+        # TODO : How should a random sd look ? diagonal ? triangular ? full (hmm no) ?
+        inits[[i]][[k]]$sd = diag(unlist(lapply(1:dq, function(l) runif(1, 0, maxX[l] - minX[l]))))
+        inits[[i]][[k]]$p = p[k]
+        # TODO : If there are no categorial variables the line below still produces at least one value
+        # not very important but would be cleaner without that
+        inits[[i]][[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
+      }
+    }
+  }
+  return(inits)
 }
 
 EM <- function(Xc, Xq, theta_0, model, epsilon){
