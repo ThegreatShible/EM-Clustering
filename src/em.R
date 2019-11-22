@@ -117,8 +117,8 @@ M_Step <- function(Xc, Xq, Z, model){
 
 clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
   newX = splitByVarType(X)
-  Xc = newX$cat
-  Xq = newX$quant
+  Xc = newX$Xc
+  Xq = newX$Xq
   #if(is.numeric(nbClust)) nbClusts = 1:nbClust
   #else nbClusts = nbClust
   
@@ -184,7 +184,7 @@ ICL <- function(bic, Z){
 }
 
 splitByVarType <- function(X) {
-  num = apply(X, 2, is.numeric)
+  num = unlist(lapply(X, is.numeric))
   Xq = X[,num]
   Xc = X[,!num]
   return(list(Xc=Xc, Xq=Xq))
