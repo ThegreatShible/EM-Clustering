@@ -124,9 +124,9 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
   
   # res is a list for all models
   res = list()
-  i  = 0
+  i  = 1
   for(model in models) {
-    j = 0
+    j = 1
     # A particular model is a sub list for all clusters
     res[[i]] = list()
     for (K in nbClusts){
