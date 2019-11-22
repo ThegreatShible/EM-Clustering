@@ -227,11 +227,9 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     last_likelihood = current_likelihood
     Z <- E_Step(theta, Xc, Xq, model)
     new_theta = M_step(Xc, Xq, Z, model)
-    current_likelihood = process_likelihood(Xc, Xq, Z, theta)
+    current_likelihood = process_likelihood(Xc, Xq, Z, new_theta)
     theta = new_theta
-    print(current_likelihood)
-    print(last_likelihood)
-    if (current_likelihood - last_likelihood < epsilon)
+    if (current_likelihood != -Inf & current_likelihood - last_likelihood < epsilon)
       break
   }
   res = list(likelihood= current_likelihood, Z=Z, theta= new_theta)
@@ -257,10 +255,14 @@ process_likelihood <- function(Xc, Xq, Z, theta){
     # det_sd_k = det(sd_k)
     alpha_k = theta[[k]]$alpha
     
-    fk_q = mdnorm(Xq, mean_k, sd_k)
-    fk_c = multinomial(Xc, alpha_k)
-    log_fk = log(fk_q) + log(fk_c)
+    # TODO : Here we have values so small they are 0
+    # Temporary fix is to add minimal possible value so that logarithm is
+    # not -Inf but not sure if that's the best way...
     
+    fk_q = mdnorm(Xq, mean_k, sd_k) + .Machine$double.xmin
+    fk_c = multinomial(Xc, alpha_k) + .Machine$double.xmin
+    log_fk = log(fk_q) + log(fk_c)
+
     Q = Q + sum(Z[,k] * log_fk)
     
     # Q = Q + sum(apply(X_centered, 1, function(i) {

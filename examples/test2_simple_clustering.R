@@ -7,5 +7,7 @@ b = c(rnorm(n, 0, 2), rnorm(n, 4, 0.5))
 X = as.data.frame(cbind(a, b))
 
 plot(X)
-
-clust(X, 2, "VVV", 10, "kmeans", 0.1)
+clusty = clust(X=X, nbClust=2, models="VVV",  nbInit=100, initMethod="random", epsilon=0.001)
+Z = clusty[[1]][[1]]$Z
+Z = cbind(Z, apply(Z, 1, which.max))
+plot(X[,1], X[,2], col=c("red", "green" ,"blue")[Z[,3]])
