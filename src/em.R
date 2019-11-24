@@ -38,7 +38,7 @@ fK <- function(Xc, Xq, alphas, mean, sd) {
   if(!is.null(Xc)){
     fXc = mulinomial2(Xc, alphas)
   }else if(!is.null(Xq)) {
-    fXq = mdnorm(xq, mean = mean, sd = sd)
+    fXq = mdnorm2(xq, mean = mean, sd = sd)
   }
   return(list(fc = fXc, fq=fXq, f=fXc*fXq))
 }
@@ -85,6 +85,17 @@ mdnorm <- function(X, mean, sd) {
   inv_sd = solve(sd)
   a = ((2 * pi) ^ (p / 2)) * (det(sd) ^ (1/2))
   b = apply(X, 1, function(x) - (1/2) * (t(x-mean) %*% inv_sd %*% (x-mean)))
+  return((1 / a) * exp(b))
+}
+
+mdnorm2 <- function(X, mean,sd) {
+  if (ncol(X) == 0) return(1)
+  #X = matrix(X, ncol=length(mean))
+  p = length(mean)
+  inv_sd = solve(sd)
+  a = ((2 * pi) ^ (p / 2)) * (det(sd) ^ (1/2))
+  reduced_X = sweep(X, 2, mean)
+  b = -(1/2) * (t(reduced_X) %*% inv_sd %*% (reduced_X))
   return((1 / a) * exp(b))
 }
 
