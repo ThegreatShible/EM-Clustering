@@ -31,7 +31,7 @@ create_theta <- function(dq, dc, k) {
 }
 
 #Process f(x|K) with K being the cluster and Xc and Xq matrices
-#Returns fc : f(Xc), fq : f(Xq)
+#Returns fc : f(Xc), fq : f(Xq), f: f(Xc::Xq)
 fK <- function(Xc, Xq, alphas, mean, sd) {
   fXc = 1
   fXq = 1
@@ -40,11 +40,18 @@ fK <- function(Xc, Xq, alphas, mean, sd) {
   }else if(!is.null(Xq)) {
     fXq = mdnorm(xq, mean = mean, sd = sd)
   }
-  return(list(fc = fXc, fq=fXq))
+  return(list(fc = fXc, fq=fXq, f=fXc*fXq))
 }
-#Process f(x|K)*Pk with K being the cluster, for each K
-all_fK(Xc, Xq, thetas){
-  sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd))
+
+#Process f(X|K)*Pk with K being the cluster, for each K
+all_fK(Xc, Xq, thetas,res="f"){
+  if(res="fq")
+    return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fq))
+  else if(res="fc") {
+    return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fc))
+  }else {
+    return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$f))
+  }
 }
 
 
@@ -64,19 +71,13 @@ E_Step <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   return(proba)
 }
 E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
-  if (!is.null(Xq)) n = nrow(Xq)
-  else {
-    if (!is.null(Xc)) n = nrow(Xc)
-    else stop("Dataset is empty")
-  }
-  #TODO : if Null
-  tZ_temp = sapply(1:n, function(i) all_fK(Xc[i,], Xq[i,]), thetas)
-  Z_temp = t(tZ_temp)
+  tZ_temp = all_fk(Xc=Xc, Xq=Xq, thetas=thetas)
   Z = Z_temp / rowSums(Z_temp)
 }
 
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
+#TODO verify
 mdnorm <- function(X, mean, sd) {
   if (ncol(X) == 0) return(1)
   #X = matrix(X, ncol=length(mean))
