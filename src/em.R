@@ -44,13 +44,14 @@ fK <- function(Xc, Xq, alphas, mean, sd) {
 }
 
 #Process f(X|K)*Pk with K being the cluster, for each K
+#Returns a matrix of N*K with N = number of observations and K number of clusters
 all_fK <- function(Xc, Xq, thetas,res="f"){
   if(res=="fq"){
-    return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fq))
+    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fq))
   }else if(res=="fc") {
-    return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fc))
+    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fc))
   }else {
-    return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$f))
+    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$f))
   }
 }
 
