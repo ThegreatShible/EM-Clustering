@@ -36,10 +36,10 @@ create_theta <- function(dq, dc, k) {
 fK <- function(Xc, Xq, alphas, mean, sd) {
   fXc = 1
   fXq = 1
-  if(!is.null(Xc)){
+  if(!is.null(Xc) && !ncol(Xc) == 0){
     fXc = multinomial2(Xc, alphas)
-  }else if(!is.null(Xq)) {
-    fXq = mdnorm2(xq, mean = mean, sd = sd)
+  }else if(!is.null(Xq) && !ncol(Xq) == 0) {
+    fXq = mdnorm(Xq, mean = mean, sd = sd)
   }
   return(list(fc = fXc, fq=fXq, f=fXc*fXq))
 }
@@ -99,13 +99,14 @@ mdnorm2 <- function(X, mean,sd) {
   p = length(mean)
   inv_sd = solve(sd)
   a = ((2 * pi) ^ (p / 2)) * (det(sd) ^ (1/2))
-  reduced_X = sweep(X, 2, mean)
-  b = -(1/2) * (t(reduced_X) %*% inv_sd %*% (reduced_X))
+  reduced_X = as.matrix(sweep(X, 2, mean))
+  b = -(1/2) * (reduced_X %*% inv_sd %*% t(reduced_X))
   return((1 / a) * exp(b))
 }
 
+
 get_nb_modalities <- function(X) {
-  if (ncol(X) == 0) return(0)
+  if (is.null(X) || ncol(X) == 0) return(0)
   return(apply(X, 2, function(c) length(levels(factor(c)))))
 }
 
@@ -164,7 +165,7 @@ M_step <- function(Xc, Xq, Z, model){
     #sd_k = (t(X_c_k) %*% (X_c_k)) / n
     sd_k = matrix(0, nrow=nVars, ncol=nVars)
     for (i in (1: n)) {
-      mat = tk[i] * X_centered[i,] * t(X_centered[i,])
+      mat = tk[i] * X_centered[i,] %*% t(X_centered[i,])
       sd_k = sd_k + mat
     }
     sd_k = sd_k/nk
@@ -184,8 +185,9 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
   newX = split_by_var_type(X)
   Xc = newX$Xc
   Xq = newX$Xq
-  #if(is.numeric(nbClust)) nbClusts = 1:nbClust
-  #else nbClusts = nbClust
+  modalities = newX$modalities
+  if(is.numeric(nbClust)) nbClusts = 2:nbClust
+  else nbClusts = nbClust
   
   # res is a list for all models
   res = list()
@@ -194,8 +196,8 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
     j = 1
     # A particular model is a sub list for all clusters
     res[[i]] = list()
-    for (K in nbClust){
-      thetas_0 = init_thetas(Xc, Xq, initMethod, nbInit, K)
+    for (K in nbClusts){
+      thetas_0 = init_thetas(Xc, Xq, initMethod, nbInit, K, modalities)
       best_likelihood = -Inf
       best_theta = NULL
       for(theta_0 in thetas_0){
@@ -205,10 +207,10 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
           best_em = em
         }
       }
-      #bic = BIC(Xq, model, best_likelihood,K)
-      #icl = ICL(bic, best_em$Z)
+      bic = BIC(Xq, model, best_likelihood,K)
+      icl = ICL(bic, best_em$Z)
       res_i = list(model=model, nbClusters=K, theta=best_em$theta, 
-                   #bic=bic, icl=icl, 
+                   bic=bic, icl=icl, 
                    Z=best_em$Z)
       res[[i]][[j]] = res_i
       j = j+1
@@ -257,17 +259,23 @@ split_by_var_type <- function(X) {
   Xc = X[,!num]
   X_hot = matrix(NA, nrow=n, ncol=0)
   p = ncol(Xc)
-  for (j in seq(p)) {
-    X_hot = cbind(X_hot, one_hot(factor(Xc[,j])))
-  }
-  return(list(Xc=X_hot, Xq=Xq))
+  modalities = NA
+  if(p != 0){
+    for (j in seq(p)) {
+      X_hot = cbind(X_hot, one_hot(factor(Xc[,j])))
+    }
+  modalities = get_nb_modalities(Xc)
+  }else X_hot= Xc
+  return(list(Xc=X_hot, Xq=Xq, modalities = modalities))
 }
 
-init_thetas <- function(Xc, Xq, initMethod, nbInit, K){
-  modalities = get_nb_modalities(Xc)
-  dc = sum(modalities)
+init_thetas <- function(Xc, Xq, initMethod, nbInit, K,modalities){
+  #modalities = get_nb_modalities(Xc)
+  #dc = sum(modalities)
+  #because we one hot the vector at the beggining
+  dc = ncol(Xc)
   dq = ncol(Xq)
-  inits = rep(list(create_theta(dq, dc, K)))
+  inits = rep(list(create_theta(dq, dc, K)), nbInit)
   if (initMethod == "random") {
     minX = apply(Xq, 2, min)
     maxX = apply(Xq, 2, max)
@@ -299,7 +307,8 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     theta = new_theta
     likelihood_diff = current_likelihood - last_likelihood
     if (likelihood_diff < 0)
-      stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
+      print(likelihood_diff)
+      #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
     if (likelihood_diff < epsilon)
       break
   }
