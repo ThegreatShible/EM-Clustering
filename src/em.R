@@ -30,6 +30,26 @@ create_theta <- function(dq, dc, k) {
   return(theta)
 }
 
+#Process f(x|K) with K being the cluster and Xc and Xq matrices
+#Returns fc : f(Xc), fq : f(Xq)
+fK <- function(Xc, Xq, alphas, mean, sd) {
+  fXc = 1
+  fXq = 1
+  if(!is.null(Xc)){
+    fXc = mulinomial2(Xc, alphas)
+  }else if(!is.null(Xq)) {
+    fXq = mdnorm(xq, mean = mean, sd = sd)
+  }
+  return(list(fc = fXc, fq=fXq))
+}
+#Process f(x|K)*Pk with K being the cluster, for each K
+all_fK(Xc, Xq, thetas){
+  sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd))
+}
+
+
+
+
 # Returns matrices of size n x k of probabilities
 # of each element belonging to each class
 E_Step <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
@@ -42,6 +62,17 @@ E_Step <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   proba = t(apply(proba, 1, function(i) i / sum(i)))
   
   return(proba)
+}
+E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
+  if (!is.null(Xq)) n = nrow(Xq)
+  else {
+    if (!is.null(Xc)) n = nrow(Xc)
+    else stop("Dataset is empty")
+  }
+  #TODO : if Null
+  tZ_temp = sapply(1:n, function(i) all_fK(Xc[i,], Xq[i,]), thetas)
+  Z_temp = t(tZ_temp)
+  Z = Z_temp / rowSums(Z_temp)
 }
 
 # Equivalent of function dnorm but takes as inputs
@@ -61,6 +92,14 @@ get_nb_modalities <- function(X) {
   return(apply(X, 2, function(c) length(levels(factor(c)))))
 }
 
+#Xc is assumed to be onehot encoded (it is one observation)
+multinomial2 <- function(Xc, alphas){
+  n <- nrow(Xc)
+  alphaMat <- matrix(rep(alphas,each=n), nrow=n)
+  powMat <- alphaMat^Xc
+  apply(powMat, 1, function(line) prod(line))
+}
+  
 multinomial <- function(X, alpha) {
   # alpha est un vecteur de taille la somme des nombres de modalit?s de toutes les variables
   n = nrow(X)
@@ -162,6 +201,7 @@ BIC <- function(Xq, model, likelihood, K){
   return(-2*likelihood + nb_par* log(n))
 }
 getNbParameters <- function(Xq, model, K) {
+  #TODO : add the other parameters
   nbUs <- ncol(Xq)
   res = K + K*nbUs
   nbVar = 0
@@ -239,6 +279,11 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
   return(res)
 }
 
+
+process_likelihood2 <- function(Xc, Xq, Z, theta) {
+  
+  
+}
 process_likelihood <- function(Xc, Xq, Z, theta){
   Q = 0
   K = length(theta)
