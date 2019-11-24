@@ -44,10 +44,10 @@ fK <- function(Xc, Xq, alphas, mean, sd) {
 }
 
 #Process f(X|K)*Pk with K being the cluster, for each K
-all_fK(Xc, Xq, thetas,res="f"){
-  if(res="fq")
+all_fK <- function(Xc, Xq, thetas,res="f"){
+  if(res=="fq"){
     return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fq))
-  else if(res="fc") {
+  }else if(res=="fc") {
     return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fc))
   }else {
     return(sapply(thetas, function(theta) theta$p * fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$f))
@@ -281,8 +281,11 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
 }
 
 
-process_likelihood2 <- function(Xc, Xq, Z, theta) {
-  
+process_likelihood2 <- function(Xc, Xq, Z, thetas) {
+  lfc <- log(all_fK(Xc, Xq, thetas, res="fc"))
+  lfq <- log(all_fK(Xc, Xq, thetas, res="fq"))
+  res <- Z * (lfq+lfc)
+  return(sum(res))
   
 }
 process_likelihood <- function(Xc, Xq, Z, theta){
