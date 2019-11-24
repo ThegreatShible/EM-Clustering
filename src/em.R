@@ -32,11 +32,12 @@ create_theta <- function(dq, dc, k) {
 
 #Process f(x|K) with K being the cluster and Xc and Xq matrices
 #Returns fc : f(Xc), fq : f(Xq), f: f(Xc::Xq)
+#TODO: include parameter inside (fc, fq, f)
 fK <- function(Xc, Xq, alphas, mean, sd) {
   fXc = 1
   fXq = 1
   if(!is.null(Xc)){
-    fXc = mulinomial2(Xc, alphas)
+    fXc = multinomial2(Xc, alphas)
   }else if(!is.null(Xq)) {
     fXq = mdnorm2(xq, mean = mean, sd = sd)
   }
@@ -72,7 +73,7 @@ E_Step <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   return(proba)
 }
 E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
-  Z_temp = all_fk(Xc=Xc, Xq=Xq, thetas=thetas)
+  Z_temp = all_fK(Xc=Xc, Xq=Xq, thetas=thetas)
   Ps = sapply(thetas, function(theta) theta$p)
   Z_temp = sweep(Z_temp, 2, Ps, "*")
   Z = Z_temp / rowSums(Z_temp)
@@ -254,7 +255,12 @@ split_by_var_type <- function(X) {
   num = unlist(lapply(X, is.numeric))
   Xq = X[,num]
   Xc = X[,!num]
-  return(list(Xc=Xc, Xq=Xq))
+  X_hot = matrix(NA, nrow=n, ncol=0)
+  p = ncol(Xc)
+  for (j in seq(p)) {
+    X_hot = cbind(X_hot, one_hot(factor(Xc[,j])))
+  }
+  return(list(Xc=X_hot, Xq=Xq))
 }
 
 init_thetas <- function(Xc, Xq, initMethod, nbInit, K){
@@ -287,9 +293,9 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
   theta = theta_0
   repeat{
     last_likelihood = current_likelihood
-    Z <- E_Step(theta, Xc, Xq, model)
+    Z <- E_Step2(theta, Xc, Xq, model)
     new_theta = M_step(Xc, Xq, Z, model)
-    current_likelihood = process_likelihood(Xc, Xq, Z, new_theta)
+    current_likelihood = process_likelihood2(Xc, Xq, Z, new_theta)
     theta = new_theta
     likelihood_diff = current_likelihood - last_likelihood
     if (likelihood_diff < 0)
