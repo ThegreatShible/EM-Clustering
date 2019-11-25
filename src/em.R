@@ -222,7 +222,7 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
 
 BIC <- function(Xq, model, likelihood, K){
   n <- nrow(Xq)
-  nb_par = getNbParameters(Xq, model)
+  nb_par = getNbParameters(Xq, model, K)
   return(-2*likelihood + nb_par* log(n))
 }
 getNbParameters <- function(Xq, model, K) {
