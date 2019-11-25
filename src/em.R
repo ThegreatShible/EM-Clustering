@@ -160,30 +160,31 @@ M_step <- function(Xc, Xq, Z, model){
   # Temporary : To be moved to VVV model
   K = ncol(Z)
   n = nrow(Xc)
-  nVars = ncol(Xq)
+  nqCol = ncol(Xq)
+  ncCol = ncol(Xc)
   theta = create_theta(ncol(Xq), ncol(Xc), K)
   for (k in seq(K)) {
     tk = Z[,k]
     nk = sum(tk)
     pk = nk / n
-    mean_k = apply(Xq * tk, 2, sum) / nk
-    X_centered = t(apply(Xq, 1, function(i) i - mean_k))
-    X_c_k = X_centered * tk
-    #sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
-    #sd_k = (t(X_c_k) %*% (X_c_k)) / n
-    sd_k = matrix(0, nrow=nVars, ncol=nVars)
-    for (i in (1: n)) {
-      mat = tk[i] * X_centered[i,] %*% t(X_centered[i,])
-      sd_k = sd_k + mat
+    if(!nqCol == 0){
+      mean_k = apply(Xq * tk, 2, sum) / nk
+      X_centered = t(apply(Xq, 1, function(i) i - mean_k))
+      X_c_k = X_centered * tk
+      sd_k = matrix(0, nrow=nqCol, ncol=nqCol)
+      for (i in (1: n)) {
+        mat = tk[i] * X_centered[i,] %*% t(X_centered[i,])
+        sd_k = sd_k + mat
+      }
+      sd_k = sd_k/nk
+      theta[[k]]$mean = mean_k
+      theta[[k]]$sd = sd_k
     }
-    sd_k = sd_k/nk
-    theta[[k]]$p = pk
-    theta[[k]]$mean = mean_k
-    theta[[k]]$sd = sd_k
-    
-    if(ncol(Xc) > 0) {
+    if(!ncol(Xc) == 0) {
       theta[[k]]$alpha = sum(tk * Xc) / nrow(Xc)
     }
+    
+    theta[[k]]$p = pk
   }
   return(theta)
 }
