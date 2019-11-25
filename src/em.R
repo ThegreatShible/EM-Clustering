@@ -191,6 +191,8 @@ M_step <- function(Xc, Xq, Z, model){
 
 
 clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
+  if(is.null(X) || nrow(X)==0 || ncol(X) == 0)
+    stop("Error : Empty dataset")
   newX = split_by_var_type(X)
   Xc = newX$Xc
   Xq = newX$Xq
