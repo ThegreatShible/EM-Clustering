@@ -21,12 +21,20 @@ EMtmp <- function(X, K, nb_init=10) {
 create_theta <- function(dq, dc, k) {
   # dq : Dimension of quantitative variables
   # dc : Number of modalities of all categorial variables
-  m = rep(NA,dq)
-  s = matrix(NA, dq, dq)
+  one_theta = list()
+  if(!dq == 0){
+    m = rep(NA,dq)
+    s = matrix(NA, dq, dq)
+    one_theta$mean = m
+    one_theta$sd = s
+  }
+  if(!dc == 0){
+    a = rep(NA, dc)
+    one_theta$alpha=a
+  }
   p = NA
-  a = rep(NA, dc)
-  t = list(mean=m, sd=s, p=p, alpha=a)
-  theta = rep(list(t), k)
+  one_theta$p = p
+  theta = rep(list(one_theta), k)
   return(theta)
 }
 
