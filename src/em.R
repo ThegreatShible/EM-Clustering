@@ -285,18 +285,23 @@ init_thetas <- function(Xc, Xq, initMethod, nbInit, K,modalities){
   dq = ncol(Xq)
   inits = rep(list(create_theta(dq, dc, K)), nbInit)
   if (initMethod == "random") {
-    minX = apply(Xq, 2, min)
-    maxX = apply(Xq, 2, max)
+    if(!dq == 0){
+      minX = apply(Xq, 2, min)
+      maxX = apply(Xq, 2, max)
+    }
     for (i in seq_along(inits)) {
       p = runif(K)
       p = p / sum(p)
       for (k in seq_along(inits[[i]])) {
         # generate Means and deviation between min and max of each dimension
-        inits[[i]][[k]]$mean = unlist(lapply(1:dq, function(l) runif(1, minX[l], maxX[l])))
-        # TODO : How should a random sd look ? diagonal ? triangular ? full (hmm no) ?
-        inits[[i]][[k]]$sd = diag(unlist(lapply(1:dq, function(l) runif(1, 0, maxX[l] - minX[l]))))
+        if(!dq == 0) {
+          inits[[i]][[k]]$mean = unlist(lapply(1:dq, function(l) runif(1, minX[l], maxX[l])))
+          # TODO : How should a random sd look ? diagonal ? triangular ? full (hmm no) ?
+          inits[[i]][[k]]$sd = diag(unlist(lapply(1:dq, function(l) runif(1, 0, maxX[l] - minX[l]))))
+        }
+        if(!dc == 0)
+          inits[[i]][[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
         inits[[i]][[k]]$p = p[k]
-        inits[[i]][[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
       }
     }
   }
