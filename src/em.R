@@ -322,9 +322,13 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     current_likelihood = process_likelihood2(Xc, Xq, Z, new_theta)
     theta = new_theta
     likelihood_diff = current_likelihood - last_likelihood
-    if (likelihood_diff < 0){
-      cat("likelihood_diff: ",likelihood_diff, " /current : ", current_likelihood, " /last: ",last_likelihood)
-    }
+    tryCatch({
+      if (likelihood_diff < 0){
+        cat("likelihood_diff: ",likelihood_diff, " /current : ", current_likelihood, " /last: ",last_likelihood, "\n")
+      }
+    }, error = function(error_condition){
+      cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
+    })
      
       #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
     if (likelihood_diff < epsilon)
