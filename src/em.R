@@ -259,7 +259,7 @@ split_by_var_type <- function(X) {
   Xc = X[,!num]
   X_hot = matrix(NA, nrow=n, ncol=0)
   p = ncol(Xc)
-  modalities = NA
+  modalities = 0
   if(p != 0){
     for (j in seq(p)) {
       X_hot = cbind(X_hot, one_hot(factor(Xc[,j])))
