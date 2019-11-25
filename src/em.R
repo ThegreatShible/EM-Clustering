@@ -4,8 +4,7 @@ EMtmp <- function(X, K, nb_init=10) {
   d = ncol(X)
   n = nrow(X)
   
-  # TODO : split X into Xc and Xq
-  
+
   theta = create_theta(d, k)
   proba = classify(theta, Xc, Xq)
   
@@ -40,14 +39,13 @@ create_theta <- function(dq, dc, k) {
 
 #Process f(x|K) with K being the cluster and Xc and Xq matrices
 #Returns fc : f(Xc), fq : f(Xq), f: f(Xc::Xq)
-#TODO: include parameter inside (fc, fq, f)
 fK <- function(Xc, Xq, alphas, mean, sd) {
   fXc = 1
   fXq = 1
   if(!is.null(Xc) && !ncol(Xc) == 0){
     fXc = multinomial2(Xc, alphas)
   }else if(!is.null(Xq) && !ncol(Xq) == 0) {
-    fXq = mdnorm(Xq, mean = mean, sd = sd)
+    fXq = mdnorm2(Xq, mean = mean, sd = sd)
   }
   return(list(fc = fXc, fq=fXq, f=fXc*fXq))
 }
@@ -108,7 +106,7 @@ mdnorm2 <- function(X, mean,sd) {
   inv_sd = solve(sd)
   a = ((2 * pi) ^ (p / 2)) * (det(sd) ^ (1/2))
   reduced_X = as.matrix(sweep(X, 2, mean))
-  b = -(1/2) * (reduced_X %*% inv_sd %*% t(reduced_X))
+  b = -(1/2) * rowSums((reduced_X %*% inv_sd)* reduced_X)
   return((1 / a) * exp(b))
 }
 
@@ -166,17 +164,16 @@ M_step <- function(Xc, Xq, Z, model){
   for (k in seq(K)) {
     tk = Z[,k]
     nk = sum(tk)
+    norm_tk = tk/nk
     pk = nk / n
     if(!nqCol == 0){
-      mean_k = apply(Xq * tk, 2, sum) / nk
+      mean_k = apply(Xq * norm_tk, 2, sum)
       X_centered = t(apply(Xq, 1, function(i) i - mean_k))
-      X_c_k = X_centered * tk
       sd_k = matrix(0, nrow=nqCol, ncol=nqCol)
       for (i in (1: n)) {
-        mat = tk[i] * X_centered[i,] %*% t(X_centered[i,])
+        mat = norm_tk[i] * X_centered[i,] %*% t(X_centered[i,])
         sd_k = sd_k + mat
       }
-      sd_k = sd_k/nk
       theta[[k]]$mean = mean_k
       theta[[k]]$sd = sd_k
     }
@@ -328,6 +325,11 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
       }
     }, error = function(error_condition){
       cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
+      current_likelihood = -Inf
+      print(Xc)
+      print(Z)
+      print(new_theta)
+      break
     })
      
       #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
