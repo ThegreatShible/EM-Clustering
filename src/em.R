@@ -324,7 +324,7 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     likelihood_diff = current_likelihood - last_likelihood
     tryCatch({
       if (likelihood_diff < 0){
-        cat("likelihood_diff: ",likelihood_diff, " /current : ", current_likelihood, " /last: ",last_likelihood, "\n")
+        cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
       }
     }, error = function(error_condition){
       cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
