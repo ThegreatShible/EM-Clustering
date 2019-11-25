@@ -8,7 +8,7 @@ X = as.data.frame(cbind(a, b))
 
 plot(X)
 
-clusty = clust(X=X, nbClust=2, models="VVV",  nbInit=100, initMethod="random", epsilon=0.001)
+clusty = clust(X=X, nbClust=1, models="VVV",  nbInit=1, initMethod="random", epsilon=0.1)
 Z = clusty[[1]][[1]]$Z
 Z = cbind(Z, apply(Z, 1, which.max))
 plot(X[,1], X[,2], col=c("red", "green" ,"blue")[Z[,3]])

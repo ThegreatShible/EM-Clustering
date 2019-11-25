@@ -186,8 +186,8 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
   Xc = newX$Xc
   Xq = newX$Xq
   modalities = newX$modalities
-  if(is.numeric(nbClust)) nbClusts = 2:nbClust
-  else nbClusts = nbClust
+  #if(is.numeric(nbClust)) nbClusts = 2:nbClust
+  #else nbClusts = nbClust
   
   # res is a list for all models
   res = list()
@@ -196,7 +196,7 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
     j = 1
     # A particular model is a sub list for all clusters
     res[[i]] = list()
-    for (K in nbClusts){
+    for (K in nbClust){
       thetas_0 = init_thetas(Xc, Xq, initMethod, nbInit, K, modalities)
       best_likelihood = -Inf
       best_theta = NULL
