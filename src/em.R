@@ -178,7 +178,7 @@ M_step <- function(Xc, Xq, Z, model){
       theta[[k]]$sd = sd_k
     }
     if(!ncol(Xc) == 0) {
-      theta[[k]]$alpha = sum(tk * Xc) / nrow(Xc)
+      theta[[k]]$alpha = colSums(tk * Xc) / nrow(Xc)
     }
     
     theta[[k]]$p = pk
