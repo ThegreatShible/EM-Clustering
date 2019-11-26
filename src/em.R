@@ -425,17 +425,15 @@ plot_result <- function(result) {
   xmin=Inf
   ymin=Inf
   to_plot = list()
-  i=0
   legend=c()
+  i=0
   for (model in result) {
     for (m in model) {
       legend = c(legend, paste(c(m$model, "BIC"), collapse = " "), paste(c(m$model, "ICL"), collapse=" "))
       break
     }
     i = i + 1
-    p = matrix(unlist(lapply(model, function(m) {
-      c(m$nbClusters, m$bic, m$icl)
-    })), nrow=3)
+    p = matrix(unlist(lapply(model, function(m) c(m$nbClusters, m$bic, m$icl))), nrow=3)
     to_plot[[i]] = p
     k = p[1,]
 
