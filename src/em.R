@@ -343,8 +343,17 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
 
 
 process_likelihood2 <- function(Xc, Xq, Z, thetas) {
-  lfc <- log(all_fK(Xc, NULL, thetas, res="fc"))
-  lfq <- log(all_fK(NULL, Xq, thetas, res="fq"))
+  fc <- all_fK(Xc, NULL, thetas, res="fc")
+  fq <- all_fK(NULL, Xq, thetas, res="fq")
+  
+  zeros = (fc == 0)
+  fc = replace(fc, zeros, .Machine$double.xmin)
+  zeros = (fq == 0)
+  fq = replace(fq, zeros, .Machine$double.xmin)
+  
+  lfc = log(fc)
+  lfq = log(fq)
+  
   res <- Z * (lfq+lfc)
   return(sum(res))
   
