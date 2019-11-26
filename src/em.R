@@ -262,6 +262,7 @@ ICL <- function(bic, Z){
 }
 
 split_by_var_type <- function(X) {
+  n = nrow(X)
   num = unlist(lapply(X, is.numeric))
   Xq = X[,num]
   Xc = X[,!num]
