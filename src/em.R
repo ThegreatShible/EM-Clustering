@@ -1,6 +1,7 @@
 library(plot3D)
 
-
+GK = 0
+GI= 0
 EMtmp <- function(X, K, nb_init=10) {
   d = ncol(X)
   n = nrow(X)
@@ -84,6 +85,8 @@ E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   Ps = sapply(thetas, function(theta) theta$p)
   Z_temp = sweep(Z_temp, 2, Ps, "*")
   Z = Z_temp / rowSums(Z_temp)
+  zeros = (Z == 0)
+  Z = replace(Z, zeros, .Machine$double.xmin)
   Z
 }
 

@@ -10,6 +10,9 @@ split_by_var_type(X)
 
 K=2
 clusty = clust(X=X, nbClust=K, models="VVV",  nbInit=20, initMethod="random", epsilon=0.01)
+for( c in clusty[[1]]) {
+  print(c$icl)
+}
 Z = clusty[[1]][[1]]$Z
 Z = cbind(Z, apply(Z, 1, which.max))
 Res <- as.matrix(X)
