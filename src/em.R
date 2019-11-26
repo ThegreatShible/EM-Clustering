@@ -395,3 +395,29 @@ process_likelihood <- function(Xc, Xq, Z, theta){
   return(Q)
 }
 
+plot_result <- function(result) {
+  plot.new()
+  xmax=-Inf
+  ymax=-Inf
+  xmin=Inf
+  ymin=Inf
+  to_plot = list()
+  for (model in result) {
+    p = matrix(unlist(lapply(model, function(m) c(m$nbClusters, m$bic, m$icl))), nrow=3)
+    to_plot = c(to_plot, list(p))
+    k = p[1,]
+
+    xmax=max(xmax, max(k))
+    xmin=min(xmin, min(k))
+    ymax=max(ymax, max(p[-1,]))
+    ymin=min(ymin, min(p[-1,]))
+  }
+  plot(0, type="n", xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+  i=0
+  for (p in to_plot) {
+    i = i + 1
+    lines(p[1,], p[2,], col=i)
+    i = i + 1
+    lines(p[1,], p[3,], col=i)
+  }
+}
