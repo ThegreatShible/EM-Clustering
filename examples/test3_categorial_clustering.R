@@ -8,9 +8,11 @@ X = cbind(a, b)
 X = as.data.frame(apply(X, 2, factor))
 split_by_var_type(X)
 
-K=4
-clusty = clust(X=X, nbClust=K, models="VVV",  nbInit=10, initMethod="random", epsilon=0.01)
+K=2
+clusty = clust(X=X, nbClust=K, models="VVV",  nbInit=20, initMethod="random", epsilon=0.01)
 Z = clusty[[1]][[1]]$Z
 Z = cbind(Z, apply(Z, 1, which.max))
-plot(X[,1], X[,2], col=Z[,(K+1)])
+Res <- as.matrix(X)
+class(Res) <- "numeric"
+plot(Res[,"a"], Res[,"b"], col=Z[,(max(K)+1)])
 unique(Z[,K+1])
