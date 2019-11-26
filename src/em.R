@@ -179,7 +179,7 @@ M_step <- function(Xc, Xq, Z, model){
       theta[[k]]$sd = sd_k
     }
     if(!ncol(Xc) == 0) {
-      theta[[k]]$alpha = colSums(tk * Xc) / nrow(Xc)
+      theta[[k]]$alpha = colSums(tk * Xc) / sum(tk)
     }
     
     theta[[k]]$p = pk
@@ -275,7 +275,7 @@ getNbParameters <- function(Xq, Xc, model, K) {
 ICL <- function(bic, Z){
   log_z = log(Z)
   e_m <- sum((Z*log_z))
-  return(bic + e_m )
+  return(bic - e_m )
 }
 
 split_by_var_type <- function(X) {
@@ -349,7 +349,6 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
       print(new_theta)
       break
     })
-     
       #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
     if (abs(likelihood_diff) < epsilon)
       break
