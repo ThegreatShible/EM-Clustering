@@ -240,9 +240,9 @@ BIC <- function(Xq, Xc, model, likelihood, K){
   else 
     n <- nrow(Xc)
   nb_par = getNbParameters(Xq, Xc, model, K)
-  return(-2*likelihood + nb_par* log(n))
+  return(2*likelihood - nb_par* log(n))
 }
-getNbParameters <- function(Xq, Xc, model, K) {
+getNbParameters <- function(Xq, Xc, model="VVV", K) {
   #TODO : add the other parameters
   Qres = 0
   Cres = 0
@@ -267,7 +267,8 @@ getNbParameters <- function(Xq, Xc, model, K) {
     else nbVar = K*(nbUs*(nbUs+1)/2)
     
     Qres = nbVar + res
-  }else if (!is.null(Xc) && !ncol(Xc) == 0){
+  }
+  if (!is.null(Xc) && !ncol(Xc) == 0){
     Cres = ncol(Xc) * K
   }
   return (Qres + Cres)
