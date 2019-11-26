@@ -275,7 +275,7 @@ getNbParameters <- function(Xq, Xc, model, K) {
 ICL <- function(bic, Z){
   log_z = log(Z)
   e_m <- sum((Z*log_z))
-  return(bic - e_m )
+  return(bic + e_m )
 }
 
 split_by_var_type <- function(X) {
