@@ -1,5 +1,6 @@
 library(plot3D)
 
+
 EMtmp <- function(X, K, nb_init=10) {
   d = ncol(X)
   n = nrow(X)
@@ -205,10 +206,15 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
     # A particular model is a sub list for all clusters
     res[[i]] = list()
     for (K in nbClust){
+      GK <-  GK+1
+      print(GK)
       thetas_0 = init_thetas(Xc, Xq, initMethod, nbInit, K, modalities)
       best_likelihood = -Inf
       best_theta = NULL
+      tmp = 0
       for(theta_0 in thetas_0){
+        tmp = tmp +1
+        assign("GI", tmp, envir = .GlobalEnv)
         em = EM(Xc, Xq, theta_0, model, epsilon)
         if(em$likelihood > best_likelihood){
           best_likelihood = em$likelihood
@@ -233,7 +239,7 @@ BIC <- function(Xq, Xc, model, likelihood, K){
     n <- nrow(Xq)
   else 
     n <- nrow(Xc)
-  nb_par = getNbParameters(Xq, model, K)
+  nb_par = getNbParameters(Xq, Xc, model, K)
   return(-2*likelihood + nb_par* log(n))
 }
 getNbParameters <- function(Xq, Xc, model, K) {
@@ -333,7 +339,7 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     likelihood_diff = current_likelihood - last_likelihood
     tryCatch({
       if (likelihood_diff < 0){
-        cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
+        cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "GI ", GI, "\n")
       }
     }, error = function(error_condition){
       cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
@@ -345,7 +351,7 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     })
      
       #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
-    if (likelihood_diff < epsilon)
+    if (abs(likelihood_diff) < epsilon)
       break
   }
   res = list(likelihood= current_likelihood, Z=Z, theta= new_theta)
@@ -364,8 +370,12 @@ process_likelihood2 <- function(Xc, Xq, Z, thetas) {
   
   lfc = log(fc)
   lfq = log(fq)
+  ps= sapply(thetas, function(theta) theta$p)
+  cat("p ", ps,"GK GI", GK," ", GI, "\n")
+  lp = log(ps)
+  logdens= sweep(lfq+lfc, 2, lp, "+")
   
-  res <- Z * (lfq+lfc)
+  res <- Z * (logdens)
   return(sum(res))
   
 }
