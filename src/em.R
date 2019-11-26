@@ -420,15 +420,23 @@ process_likelihood <- function(Xc, Xq, Z, theta){
 }
 
 plot_result <- function(result) {
-  plot.new()
   xmax=-Inf
   ymax=-Inf
   xmin=Inf
   ymin=Inf
   to_plot = list()
+  i=0
+  legend=c()
   for (model in result) {
-    p = matrix(unlist(lapply(model, function(m) c(m$nbClusters, m$bic, m$icl))), nrow=3)
-    to_plot = c(to_plot, list(p))
+    for (m in model) {
+      legend = c(legend, paste(c(m$model, "BIC"), collapse = " "), paste(c(m$model, "ICL"), collapse=" "))
+      break
+    }
+    i = i + 1
+    p = matrix(unlist(lapply(model, function(m) {
+      c(m$nbClusters, m$bic, m$icl)
+    })), nrow=3)
+    to_plot[[i]] = p
     k = p[1,]
 
     xmax=max(xmax, max(k))
@@ -436,12 +444,15 @@ plot_result <- function(result) {
     ymax=max(ymax, max(p[-1,]))
     ymin=min(ymin, min(p[-1,]))
   }
-  plot(0, type="n", xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+  plot(0, type="n", xlim=c(xmin, xmax), ylim=c(ymin, ymax), xlab="Nb Clusters", ylab="BIC/ICL values")
+  legend("bottomright", legend=legend, lty=1, col=(1:length(legend)), cex=0.8)
   i=0
   for (p in to_plot) {
     i = i + 1
+    points(p[1,], p[2,], col=i)
     lines(p[1,], p[2,], col=i)
     i = i + 1
+    points(p[1,], p[3,], col=i)
     lines(p[1,], p[3,], col=i)
   }
 }
