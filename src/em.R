@@ -108,7 +108,7 @@ logsum <- function(x) {
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
 
-"mdnorm2 <- function(X, mean,sd) {
+mdnorm2 <- function(X, mean,sd,log=F) {
   if (ncol(X) == 0) return(1)
   #X = matrix(X, ncol=length(mean))
   p = length(mean)
@@ -116,13 +116,14 @@ logsum <- function(x) {
   a = ((2 * pi) ^ (p / 2)) * (det(sd) ^ (1/2))
   reduced_X = as.matrix(sweep(X, 2, mean))
   b = -(1/2) * rowSums((reduced_X %*% inv_sd)* reduced_X)
-  return((1 / a) * exp(b))
-}"
-
-mdnorm2 <- function(X,mean, sd, log=FALSE) {
-  require(mvtnorm)
-  dmvnorm(X, mean , sd,log = log)
+  if (log) -log(a) + b
+  else (1 / a) * exp(b)
 }
+
+#mdnorm2 <- function(X,mean, sd, log=FALSE) {
+#  require(mvtnorm)
+#  dmvnorm(X, mean , sd,log = log)
+#}
 
 
 get_nb_modalities <- function(X) {
@@ -284,8 +285,8 @@ ICL <- function(bic, Z){
 split_by_var_type <- function(X) {
   n = nrow(X)
   num = unlist(lapply(X, is.numeric))
-  Xq = X[,num]
-  Xc = X[,!num]
+  Xq = as.data.frame(X[,num])
+  Xc = as.data.frame(X[,!num])
   X_hot = matrix(NA, nrow=n, ncol=0)
   p = ncol(Xc)
   modalities = 0
