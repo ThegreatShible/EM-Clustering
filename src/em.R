@@ -50,10 +50,10 @@ fK <- function(Xc, Xq, alphas, mean, sd,log) {
   }
  
   if(!is.null(Xc) && !ncol(Xc) == 0){
-    fXc = multinomial2(Xc, alphas,log)
+    fXc = multinomial2(Xc, alphas,log=log)
   }
   if(!is.null(Xq) && !ncol(Xq) == 0) {
-    fXq = mdnorm2(Xq, mean = mean, sd = sd, log)
+    fXq = mdnorm2(Xq, mean = mean, sd = sd, log=log)
   }
   
   if(log){
