@@ -218,11 +218,19 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
       tmp = 0
       for(theta_0 in thetas_0){
         tmp = tmp +1
-        em = EM(Xc, Xq, theta_0, model, epsilon)
-        if(em$likelihood > best_likelihood){
-          best_likelihood = em$likelihood
-          best_em = em
-        }
+        tryCatch({
+            em = EM(Xc, Xq, theta_0, model, epsilon)
+            if(em$likelihood > best_likelihood){
+              best_likelihood = em$likelihood
+              best_em = em
+            }
+          }, 
+          error = function(error_condition){
+            print(error_condition)
+          }
+        )
+        
+        
       }
       bic = BIC(Xq,Xc, model, best_likelihood,K)
       icl = ICL(bic, best_em$Z)
