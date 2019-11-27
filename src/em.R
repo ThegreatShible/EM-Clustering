@@ -93,15 +93,18 @@ E_Step <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   return(proba)
 }
 E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
-  Z_temp = all_fK(Xc=Xc, Xq=Xq, thetas=thetas)
-  Ps = sapply(thetas, function(theta) theta$p)
-  Z_temp = sweep(Z_temp, 2, Ps, "*")
-  Z = Z_temp / rowSums(Z_temp)
+  lZ_temp = all_fK(Xc=Xc, Xq=Xq, thetas=thetas, log=T)
+  lPs = sapply(thetas, function(theta) log(theta$p))
+  lZ_temp = sweep(lZ_temp, 2, lPs, "+")
+  lZ = lZ_temp - apply(lZ_temp, 1, logsum)
+  Z = exp(lZ)
   zeros = (Z == 0)
   Z = replace(Z, zeros, .Machine$double.xmin)
   Z
 }
-
+logsum <- function(x) {
+  max(x) + log(sum(exp(x - max(x))))
+}
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
 
