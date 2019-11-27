@@ -1,7 +1,6 @@
 library(plot3D)
 
-GK = 0
-GI= 0
+
 EMtmp <- function(X, K, nb_init=10) {
   d = ncol(X)
   n = nrow(X)
@@ -92,18 +91,8 @@ E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
 
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
-#TODO verify
-mdnorm <- function(X, mean, sd) {
-  if (ncol(X) == 0) return(1)
-  #X = matrix(X, ncol=length(mean))
-  p = length(mean)
-  inv_sd = solve(sd)
-  a = ((2 * pi) ^ (p / 2)) * (det(sd) ^ (1/2))
-  b = apply(X, 1, function(x) - (1/2) * (t(x-mean) %*% inv_sd %*% (x-mean)))
-  return((1 / a) * exp(b))
-}
 
-mdnorm2 <- function(X, mean,sd) {
+"mdnorm2 <- function(X, mean,sd) {
   if (ncol(X) == 0) return(1)
   #X = matrix(X, ncol=length(mean))
   p = length(mean)
@@ -112,6 +101,11 @@ mdnorm2 <- function(X, mean,sd) {
   reduced_X = as.matrix(sweep(X, 2, mean))
   b = -(1/2) * rowSums((reduced_X %*% inv_sd)* reduced_X)
   return((1 / a) * exp(b))
+}"
+
+mdnorm2 <- function(X,mean, sd, log=FALSE) {
+  require(mvtnorm)
+  dmvnorm(X, mean , sd,log = log)
 }
 
 
@@ -127,24 +121,12 @@ multinomial2 <- function(Xc, alphas){
   powMat <- alphaMat^Xc
   apply(powMat, 1, function(line) prod(line))
 }
+
+multinomial2 <- function(Xc, alphas, log= FALSE) {
+  require(mc2d)
   
-multinomial <- function(X, alpha) {
-  # alpha est un vecteur de taille la somme des nombres de modalit?s de toutes les variables
-  n = nrow(X)
-  if (ncol(X) == 0) return(rep(1, n))
-  
-  nb_modalities = sum(get_nb_modalities(X))
-  len_alpha = length(alpha)
-  if (nb_modalities != len_alpha)
-    stop(paste(c("Number of modalities (", nb_modalities, ") is different from the number of values in alpha (", len_alpha, ")"), collapse=""))
-  
-  X_hot = matrix(NA, nrow=n, ncol=0)
-  p = ncol(X)
-  for (j in seq(p)) {
-    X_hot = cbind(X_hot, one_hot(factor(X[,j])))
-  }
-  return(apply(X_hot, 1, function(i) prod(alpha ^ i)))
 }
+  
 
 one_hot <- function(x) {
   lvl = levels(x)
@@ -209,15 +191,13 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
     # A particular model is a sub list for all clusters
     res[[i]] = list()
     for (K in nbClust){
-      GK <-  GK+1
-      print(GK)
+
       thetas_0 = init_thetas(Xc, Xq, initMethod, nbInit, K, modalities)
       best_likelihood = -Inf
       best_theta = NULL
       tmp = 0
       for(theta_0 in thetas_0){
         tmp = tmp +1
-        assign("GI", tmp, envir = .GlobalEnv)
         em = EM(Xc, Xq, theta_0, model, epsilon)
         if(em$likelihood > best_likelihood){
           best_likelihood = em$likelihood
@@ -343,7 +323,7 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     likelihood_diff = current_likelihood - last_likelihood
     tryCatch({
       if (likelihood_diff < 0){
-        cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "GI ", GI, "\n")
+        cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
       }
     }, error = function(error_condition){
       cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
@@ -374,49 +354,12 @@ process_likelihood2 <- function(Xc, Xq, Z, thetas) {
   lfc = log(fc)
   lfq = log(fq)
   ps= sapply(thetas, function(theta) theta$p)
-  cat("p ", ps,"GK GI", GK," ", GI, "\n")
   lp = log(ps)
   logdens= sweep(lfq+lfc, 2, lp, "+")
   
   res <- Z * (logdens)
   return(sum(res))
   
-}
-process_likelihood <- function(Xc, Xq, Z, theta){
-  Q = 0
-  K = length(theta)
-  for (k in 1:K) {
-    # Refer to slide 68/90 for math detail
-    
-    # Refer to slide 59/90 for math detail
-    # tk = Z[,k]
-    # nk = sum(tk)
-    # pk = nk / n
-    mean_k = theta[[k]]$mean
-    # mean_k = apply(Xc * tk, 2, sum) / nk
-    X_centered = t(apply(Xq, 1, function(i) i - mean_k))
-    sd_k = theta[[k]]$sd
-    # sd_k = sum(tk * apply(X_centered, 1, function(i) sum(i^2))) / nk
-    # inv_sd_k = solve(sd_k)
-    # det_sd_k = det(sd_k)
-    alpha_k = theta[[k]]$alpha
-    
-    # TODO : Here we have values so small they are 0
-    # Temporary fix is to add minimal possible value so that logarithm is
-    # not -Inf but not sure if that's the best way...
-    
-    fk_q = mdnorm(Xq, mean_k, sd_k) + .Machine$double.xmin
-    fk_c = multinomial(Xc, alpha_k) + .Machine$double.xmin
-    log_fk = log(fk_q) + log(fk_c)
-
-    Q = Q + sum(Z[,k] * log_fk)
-    
-    # Q = Q + sum(apply(X_centered, 1, function(i) {
-    #   #log(pk) - p * log(2 * pi) / 2 - log(det_sd_k) / 2 - (t(i) %*% inv_sd_k %*% i)
-    #   Z[i,k] * log_fk
-    # }))
-  }
-  return(Q)
 }
 
 plot_result <- function(result) {
