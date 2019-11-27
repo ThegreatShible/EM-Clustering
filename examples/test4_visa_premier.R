@@ -7,7 +7,7 @@ replace_categ_na <- function(var) {
 replace_conti_na <- function(var) {
   if (sum(is.na(var)) > 0)
     var[is.na(var)] = mean(var, na.rm=TRUE)
-  var
+  as.numeric(var)
 }
 
 is_constant <- function(var) {
@@ -61,3 +61,26 @@ res=PCAmix(data_continuous,data_categ,rename.level=TRUE,ndim=50)
 # they have bought or not the VisaPremier credit card
 plot(res,choice="ind",coloring.ind=data_categ$cartevp,posleg="bottomright")
 plot(res,choice="cor")
+
+source("../src/em.R")
+
+# Clustering with cartevp
+X = cbind(data_categ, data_continuous)
+
+X$aveparfi = NULL
+X$nbeparlo = NULL
+X$mteparlo = NULL
+X$nbeparte = NULL
+
+clusty = clust(X, 1:5, "VVV", 1, "random", 0.1)
+install.packages("Rmixmod")
+library(Rmixmod)
+mixmodCluster(data=X, nbCluster=1:4, dataType="composite")
+
+coord <- function(n, x) {
+  l = floor((n-1)/x)
+  c(l + 1, n - l*x)
+}
+
+# Clustering without cartevp
+X$cartevp = NULL
