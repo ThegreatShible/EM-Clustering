@@ -307,31 +307,32 @@ split_by_var_type <- function(X) {
   return(list(Xc=X_hot, Xq=Xq, modalities = modalities))
 }
 
-init_theta <- function(Xc, Xq, init_method,K, modalities ) {
+init_theta <- function(Xc, Xq, initMethod="random",K, modalities ) {
   dc = ncol(Xc)
   dq = ncol(Xq)
-  init = list(create_theta(dq, dc, K))
+  init = create_theta(dq, dc, K)
   if (initMethod == "random") {
     if(!dq == 0){
-      minX = apply(Xq, 2, min)
-      maxX = apply(Xq, 2, max)
+      minX = as.numeric(apply(Xq, 2, min))
+      maxX = as.numeric(apply(Xq, 2, max))
       totaldiff =maxX - minX
     }
   
     p = runif(K)
     p = p / sum(p)
+    
     for (k in seq_along(init)) {
       # generate Means and deviation between min and max of each dimension
-      if(!dq == 0) {
+      if( dq != 0) {
         
         sd_mean = as.numeric((totaldiff)/(4*K))
         mean_mean = sapply(totaldiff, function(t) (k-1) * t + t/2)
-        means = sapply(1:dq, function(i) rnorm(1, mean_mean[i], sd_mean[i]) )
+        means = sapply(1:dq, function(i) rnorm(1, mean_mean[i], abs(sd_mean[i]) ))
         init[[k]]$mean = as.numeric(means)
         det = 0
         mean_sd=  as.numeric(totaldiff/K)
         while(det == 0) {
-          sd = t(sapply(1:dq ,function(i) abs(rnorm(dq,mean = mean_sd[i],mean_sd[i]))))
+          sd = t(sapply(1:dq ,function(i) abs(rnorm(dq,mean = mean_sd[i],abs(mean_sd[i])))))
           det = det(sd)
         }
         init[[k]]$sd = as.matrix(sd)
@@ -344,6 +345,7 @@ init_theta <- function(Xc, Xq, init_method,K, modalities ) {
   }
   return(init)
 }
+
 init_thetas <- function(Xc, Xq, initMethod, nbInit, K,modalities){
   #modalities = get_nb_modalities(Xc)
   #dc = sum(modalities)
