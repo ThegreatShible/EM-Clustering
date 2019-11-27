@@ -114,18 +114,21 @@ get_nb_modalities <- function(X) {
   return(apply(X, 2, function(c) length(levels(factor(c)))))
 }
 
-#Xc is assumed to be onehot encoded (it is one observation)
-multinomial2 <- function(Xc, alphas){
+multinomial2 <- function(Xc, alphas, log=FALSE){
   n <- nrow(Xc)
   alphaMat <- matrix(rep(alphas,each=n), nrow=n)
-  powMat <- alphaMat^Xc
-  apply(powMat, 1, function(line) prod(line))
+  if (!log) {
+    powMat <- alphaMat^Xc
+    return(apply(powMat, 1, function(line) prod(line)))
+  } else {
+    logAlpha <- log(alphaMat)
+    mulMat <- logAlpha*Xc
+    res <- rowSums(mulMat)
+    return(res)
+  }
 }
 
-multinomial2 <- function(Xc, alphas, log= FALSE) {
-  require(mc2d)
-  
-}
+
   
 
 one_hot <- function(x) {
