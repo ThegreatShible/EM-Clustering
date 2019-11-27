@@ -72,7 +72,8 @@ X$nbeparlo = NULL
 X$mteparlo = NULL
 X$nbeparte = NULL
 
-clusty = clust(X, 1:5, "VVV", 1, "random", 0.1)
+clusty = clust(data_continuous, 1:5, "VVV", 1, "random", 0.1)
+
 install.packages("Rmixmod")
 library(Rmixmod)
 mixmodCluster(data=X, nbCluster=1:4, dataType="composite")
