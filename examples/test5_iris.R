@@ -1,5 +1,5 @@
 data(iris)
-
+source("../src/em.R")
 clusty = clust(iris, 2:3, "VVV", 5, "random", 0.1)
 library(Rmixmod)
 mixmodCluster(data=iris, nbCluster=1:4, dataType="composite")
