@@ -211,19 +211,21 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
     # A particular model is a sub list for all clusters
     res[[i]] = list()
     for (K in nbClust){
-
-      thetas_0 = init_thetas(Xc, Xq, initMethod, nbInit, K, modalities)
+ 
       best_likelihood = -Inf
       best_theta = NULL
-      tmp = 0
-      for(theta_0 in thetas_0){
-        tmp = tmp +1
+      succInit = 0
+      iter = 0
+      while((succInit < nbInit) && (iter < 10*nbInit || is.null(best_theta))){
+        iter = iter + 1
+        theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities)
         tryCatch({
             em = EM(Xc, Xq, theta_0, model, epsilon)
             if(em$likelihood > best_likelihood){
               best_likelihood = em$likelihood
               best_em = em
             }
+            succInit = succInit+1
           }, 
           error = function(error_condition){
           }
