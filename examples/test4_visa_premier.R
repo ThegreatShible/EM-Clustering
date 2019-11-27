@@ -82,5 +82,5 @@ coord <- function(n, x) {
   c(l + 1, n - l*x)
 }
 
-# Clustering without cartevp
+# Clustering without cartevp variable
 X$cartevp = NULL
