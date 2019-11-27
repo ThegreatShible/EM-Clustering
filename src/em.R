@@ -226,7 +226,6 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
             }
           }, 
           error = function(error_condition){
-            print(error_condition)
           }
         )
         
@@ -251,6 +250,7 @@ BIC <- function(Xq, Xc, model, likelihood, K){
   else 
     n <- nrow(Xc)
   nb_par = getNbParameters(Xq, Xc, model, K)
+  print(likelihood)
   return(2*likelihood - nb_par* log(n))
 }
 getNbParameters <- function(Xq, Xc, model="VVV", K) {
@@ -307,6 +307,43 @@ split_by_var_type <- function(X) {
   return(list(Xc=X_hot, Xq=Xq, modalities = modalities))
 }
 
+init_theta <- function(Xc, Xq, init_method,K, modalities ) {
+  dc = ncol(Xc)
+  dq = ncol(Xq)
+  init = list(create_theta(dq, dc, K))
+  if (initMethod == "random") {
+    if(!dq == 0){
+      minX = apply(Xq, 2, min)
+      maxX = apply(Xq, 2, max)
+      totaldiff =maxX - minX
+    }
+  
+    p = runif(K)
+    p = p / sum(p)
+    for (k in seq_along(init)) {
+      # generate Means and deviation between min and max of each dimension
+      if(!dq == 0) {
+        
+        sd_mean = as.numeric((totaldiff)/(4*K))
+        mean_mean = sapply(totaldiff, function(t) (k-1) * t + t/2)
+        means = sapply(1:dq, function(i) rnorm(1, mean_mean[i], sd_mean[i]) )
+        init[[k]]$mean = as.numeric(means)
+        det = 0
+        mean_sd=  as.numeric(totaldiff/K)
+        while(det == 0) {
+          sd = t(sapply(1:dq ,function(i) abs(rnorm(dq,mean = mean_sd[i],mean_sd[i]))))
+          det = det(sd)
+        }
+        init[[k]]$sd = as.matrix(sd)
+      }
+      if(!dc == 0)
+        init[[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
+      init[[k]]$p = p[k]
+    }
+    
+  }
+  return(init)
+}
 init_thetas <- function(Xc, Xq, initMethod, nbInit, K,modalities){
   #modalities = get_nb_modalities(Xc)
   #dc = sum(modalities)
@@ -318,6 +355,7 @@ init_thetas <- function(Xc, Xq, initMethod, nbInit, K,modalities){
     if(!dq == 0){
       minX = apply(Xq, 2, min)
       maxX = apply(Xq, 2, max)
+      totaldiff =maxX - minX
     }
     for (i in seq_along(inits)) {
       p = runif(K)
@@ -325,9 +363,20 @@ init_thetas <- function(Xc, Xq, initMethod, nbInit, K,modalities){
       for (k in seq_along(inits[[i]])) {
         # generate Means and deviation between min and max of each dimension
         if(!dq == 0) {
-          inits[[i]][[k]]$mean = unlist(lapply(1:dq, function(l) runif(1, minX[l], maxX[l])))
+          
+          sd_mean = as.numeric((totaldiff)/(4*K))
+          mean_mean = sapply(totaldiff, function(t) (k-1) * t + t/2)
+          means = sapply(1:dq, function(i) rnorm(1, mean_mean[i], sd_mean[i]) )
+          inits[[i]][[k]]$mean = as.numeric(means)
+
           # TODO : How should a random sd look ? diagonal ? triangular ? full (hmm no) ?
-          inits[[i]][[k]]$sd = diag(unlist(lapply(1:dq, function(l) runif(1, 0, maxX[l] - minX[l]))))
+          det = 0
+          while(det == 0) {
+            mean_sd=  as.numeric(totaldiff/K)
+            sd = t(sapply(1:dq ,function(i) abs(rnorm(dq,mean = mean_sd[i],mean_sd[i]))))
+            det = det(sd)
+          }
+          inits[[i]][[k]]$sd = as.matrix(sd)
         }
         if(!dc == 0)
           inits[[i]][[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
@@ -351,14 +400,11 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     likelihood_diff = current_likelihood - last_likelihood
     tryCatch({
       if (likelihood_diff < 0){
-        cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
+        #cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
       }
     }, error = function(error_condition){
-      cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
+      #cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
       current_likelihood = -Inf
-      print(Xc)
-      print(Z)
-      print(new_theta)
       break
     })
       #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
