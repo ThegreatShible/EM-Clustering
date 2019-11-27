@@ -40,26 +40,39 @@ create_theta <- function(dq, dc, k) {
 
 #Process f(x|K) with K being the cluster and Xc and Xq matrices
 #Returns fc : f(Xc), fq : f(Xq), f: f(Xc::Xq)
-fK <- function(Xc, Xq, alphas, mean, sd) {
-  fXc = 1
-  fXq = 1
-  if(!is.null(Xc) && !ncol(Xc) == 0){
-    fXc = multinomial2(Xc, alphas)
-  }else if(!is.null(Xq) && !ncol(Xq) == 0) {
-    fXq = mdnorm2(Xq, mean = mean, sd = sd)
+fK <- function(Xc, Xq, alphas, mean, sd,log) {
+  if(log){
+    fXc = 0
+    fXq = 0
+  }else {
+    fXc = 1
+    fXq = 1
   }
-  return(list(fc = fXc, fq=fXq, f=fXc*fXq))
+ 
+  if(!is.null(Xc) && !ncol(Xc) == 0){
+    fXc = multinomial2(Xc, alphas,log)
+  }
+  if(!is.null(Xq) && !ncol(Xq) == 0) {
+    fXq = mdnorm2(Xq, mean = mean, sd = sd, log)
+  }
+  
+  if(log){
+    f = fXc + fXq
+  }else {
+    f = fXc*fXq
+  }
+  return(list(fc = fXc, fq=fXq, f=f))
 }
 
 #Process f(X|K)*Pk with K being the cluster, for each K
 #Returns a matrix of N*K with N = number of observations and K number of clusters
-all_fK <- function(Xc, Xq, thetas,res="f"){
+all_fK <- function(Xc, Xq, thetas,res="f", log=FALSE){
   if(res=="fq"){
-    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fq))
+    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd, log)$fq))
   }else if(res=="fc") {
-    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$fc))
+    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd, log)$fc))
   }else {
-    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd)$f))
+    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd,log)$f))
   }
 }
 
@@ -346,16 +359,16 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
 
 
 process_likelihood2 <- function(Xc, Xq, Z, thetas) {
-  fc <- all_fK(Xc, NULL, thetas, res="fc")
-  fq <- all_fK(NULL, Xq, thetas, res="fq")
+  fc <- all_fK(Xc, NULL, thetas, res="fc", log=TRUE)
+  fq <- all_fK(NULL, Xq, thetas, res="fq", log=TRUE)
   
-  zeros = (fc == 0)
-  fc = replace(fc, zeros, .Machine$double.xmin)
-  zeros = (fq == 0)
-  fq = replace(fq, zeros, .Machine$double.xmin)
+  #zeros = (fc == 0)
+  #fc = replace(fc, zeros, .Machine$double.xmin)
+  #zeros = (fq == 0)
+  #fq = replace(fq, zeros, .Machine$double.xmin)
   
-  lfc = log(fc)
-  lfq = log(fq)
+  lfc = fc
+  lfq = fq
   ps= sapply(thetas, function(theta) theta$p)
   lp = log(ps)
   logdens= sweep(lfq+lfc, 2, lp, "+")
