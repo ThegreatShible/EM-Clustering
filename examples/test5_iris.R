@@ -1,5 +1,7 @@
 data(iris)
 source("../src/em.R")
 clusty = clust(iris[,1:4], 2:6, "VVV", 50, "random", 0.1)
+plot(iris[,3], iris[,4], col=apply(clusty[[1]][[2]]$Z, 1, which.max))
 library(Rmixmod)
 mixmodCluster(data=iris, nbCluster=1:4, dataType="composite")
+plot_result(clusty)

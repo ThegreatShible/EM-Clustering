@@ -1,5 +1,5 @@
 library(plot3D)
-
+library(mixtools)
 
 EMtmp <- function(X, K, nb_init=10) {
   d = ncol(X)
@@ -53,7 +53,7 @@ fK <- function(Xc, Xq, alphas, mean, sd,log) {
     fXc = multinomial2(Xc, alphas,log=log)
   }
   if(!is.null(Xq) && !ncol(Xq) == 0) {
-    fXq = mdnorm2(Xq, mean = mean, sd = sd, log=log)
+    fXq = mdnorm2(Xq, mean, sd, log)
   }
   
   if(log){
@@ -108,7 +108,7 @@ logsum <- function(x) {
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
 
-mdnorm2 <- function(X, mean,sd,log=F) {
+"mdnorm2 <- function(X, mean,sd,log=F) {
   if (ncol(X) == 0) return(1)
   #X = matrix(X, ncol=length(mean))
   p = length(mean)
@@ -118,12 +118,14 @@ mdnorm2 <- function(X, mean,sd,log=F) {
   b = -(1/2) * rowSums((reduced_X %*% inv_sd)* reduced_X)
   if (log) -log(a) + b
   else (1 / a) * exp(b)
-}
+}"
 
-#mdnorm2 <- function(X,mean, sd, log=FALSE) {
-#  require(mvtnorm)
-#  dmvnorm(X, mean , sd,log = log)
-#}
+mdnorm2 <- function(X,mean, sd, log=FALSE) {
+  require(mvtnorm)
+  noorm=dmvnorm(X, mean , sd,log = log)
+  noorm = replace(noorm, which(noorm==Inf), 10)
+  noorm
+}
 
 
 get_nb_modalities <- function(X) {
@@ -180,6 +182,9 @@ M_step <- function(Xc, Xq, Z, model){
         mat = norm_tk[i] * X_centered[i,] %*% t(X_centered[i,])
         sd_k = sd_k + mat
       }
+      if (det(sd_k) < 1e-4) {
+        sd_k = diag(rep(0.01,nqCol))
+      }
       theta[[k]]$mean = mean_k
       theta[[k]]$sd = sd_k
     }
@@ -219,17 +224,18 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
       while((succInit < nbInit) && (iter < 10*nbInit || is.null(best_theta))){
         iter = iter + 1
         theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities)
-        tryCatch({
+        #tryCatch({
             em = EM(Xc, Xq, theta_0, model, epsilon)
             if(em$likelihood > best_likelihood){
               best_likelihood = em$likelihood
               best_em = em
             }
             succInit = succInit+1
-          }, 
-          error = function(error_condition){
-          }
-        )
+          #}, 
+          #error = function(error_condition){
+          #  print(error_condition)
+          #}
+        #)
         
         
       }
@@ -327,14 +333,20 @@ init_theta <- function(Xc, Xq, initMethod="random",K, modalities ) {
       # generate Means and deviation between min and max of each dimension
       if( dq != 0) {
         
-        sd_mean = as.numeric((totaldiff)/(4*K))
-        mean_mean = sapply(totaldiff, function(t) (k-1) * t + t/2)
-        means = sapply(1:dq, function(i) rnorm(1, mean_mean[i], abs(sd_mean[i]) ))
-        init[[k]]$mean = as.numeric(means)
+        #sd_mean = as.numeric((totaldiff)/(4*K))
+        #mean_mean = sapply(totaldiff, function(t) (k-1) * t + t/2)
+        #means = sapply(1:dq, function(i) rnorm(1, mean_mean[i], abs(sd_mean[i]) ))
+        init[[k]]$mean = unlist(Xq[sample(1:nrow(Xq), 1),])
+        #init[[k]]$mean = as.numeric(means)
         det = 0
         mean_sd=  as.numeric(totaldiff/K)
         while(det == 0) {
           sd = t(sapply(1:dq ,function(i) abs(rnorm(dq,mean = mean_sd[i],abs(mean_sd[i])))))
+          for (i in 1:(dq-1)) {
+            for (j in (i+1):dq) {
+              sd[j,i] = sd[i,j]
+            }
+          }
           det = det(sd)
         }
         init[[k]]$sd = as.matrix(sd)
@@ -398,19 +410,36 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
   repeat{
     last_likelihood = current_likelihood
     Z <- E_Step2(theta, Xc, Xq, model)
+    Z = t(apply(Z, 1, function(z) {
+      if (sum(is.nan(z))>1) {
+        zz=runif(length(z))
+        return(zz/sum(zz))
+      }
+      else return(z)
+    }))
+    if (sum(is.nan(Z)) > 1) {
+      print(Z)
+    }
+    "
+      plot(Xq)
+      for (t in theta) {
+        ellipse(t$mean, t$sd)
+      }
+    "
     new_theta = M_step(Xc, Xq, Z, model)
     current_likelihood = process_likelihood2(Xc, Xq, Z, new_theta)
     theta = new_theta
     likelihood_diff = current_likelihood - last_likelihood
-    tryCatch({
-      if (likelihood_diff < 0){
-        #cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
-      }
-    }, error = function(error_condition){
+    #tryCatch({
+      #if (likelihood_diff < 0){
+      #  cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
+      #}
+    #}, error = function(error_condition){
       #cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
-      current_likelihood = -Inf
-      break
-    })
+     # print(error_condition)
+    #  current_likelihood = -Inf
+     # break
+    #})
       #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
     if (abs(likelihood_diff) < epsilon)
       break

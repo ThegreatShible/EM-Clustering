@@ -9,13 +9,16 @@ X = as.data.frame(cbind(a, b))
 plot(X)
 
 K=4
-clusty = clust(X=X, nbClust=1:K, models="VVV",  nbInit=2, initMethod="random", epsilon=0.5)
+Rprof()
+clusty = clust(X=X, nbClust=K, models="VVV",  nbInit=10, initMethod="random", epsilon=0.5)
+Rprof(NULL)
+summaryRprof()
 
 for( c in clusty[[1]]) {
   print(c$icl)
 }
 Z = clusty[[1]][[1]]$Z
 Z = cbind(Z, apply(Z, 1, which.max))
-#plot(X[,1], X[,2], col=c("red", "green" ,"blue")[Z[,nbClust+1]])
+plot(X[,1], X[,2], col=Z[,K+1])
 
 plot_result(clusty)
