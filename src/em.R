@@ -1,6 +1,6 @@
 library(plot3D)
 library(mixtools)
-
+library(sets)
 EMtmp <- function(X, K, nb_init=10) {
   d = ncol(X)
   n = nrow(X)
@@ -124,6 +124,9 @@ mdnorm2 <- function(X,mean, sd, log=FALSE) {
   require(mvtnorm)
   noorm=dmvnorm(X, mean , sd,log = log)
   noorm = replace(noorm, which(noorm==Inf), 10)
+  if(log){
+    noorm = replace(noorm, which(noorm==-Inf), -5)
+  }
   noorm
 }
 
@@ -198,9 +201,16 @@ M_step <- function(Xc, Xq, Z, model){
 }
 
 
-clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
+clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verbose=T){
+  models = c("VVV")
   if(is.null(X) || nrow(X)==0 || ncol(X) == 0)
     stop("Error : Empty dataset")
+  for (i in nbClust)
+    if (i <= 0 || round(i) != i)
+      stop("wrong nbClust : must be a non null natural number or vector of non null natural numbers")
+  nbClust = as.set(nbClust)
+  if (nbInit <= 0 || round(nbInit) != nbInit)
+    stop("wrong nbInit : must be a non null natural number")
   newX = split_by_var_type(X)
   Xc = newX$Xc
   Xq = newX$Xq
@@ -221,23 +231,31 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
       best_theta = NULL
       succInit = 0
       iter = 0
-      while((succInit < nbInit) && (iter < 10*nbInit || is.null(best_theta))){
-        iter = iter + 1
-        theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities)
-        #tryCatch({
-            em = EM(Xc, Xq, theta_0, model, epsilon)
-            if(em$likelihood > best_likelihood){
-              best_likelihood = em$likelihood
-              best_em = em
-            }
-            succInit = succInit+1
-          #}, 
-          #error = function(error_condition){
-          #  print(error_condition)
-          #}
-        #)
+      if (K == 1) {
+        Z <- matrix(1, nrow=nrow(Xq), ncol=1)
+        best_theta = M_step(Xc,Xq, Z)
+        best_likelihood = process_likelihood2(Xc, Xq, Z, best_theta)
+        best_em = list(likelihood= best_likelihood, Z=Z, theta= best_theta)
         
-        
+      }else {
+        while((succInit < nbInit) && (iter < 10*nbInit || is.null(best_theta))){
+          iter = iter + 1
+          theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities)
+          #tryCatch({
+              em = EM(Xc, Xq, theta_0, model, epsilon)
+              if(em$likelihood > best_likelihood){
+                best_likelihood = em$likelihood
+                best_em = em
+              }
+              succInit = succInit+1
+            #}, 
+            #error = function(error_condition){
+            #  print(error_condition)
+            #}
+          #)
+          
+          
+        }
       }
       bic = BIC(Xq,Xc, model, best_likelihood,K)
       icl = ICL(bic, best_em$Z)
@@ -245,6 +263,8 @@ clust <- function(X, nbClust, models,  nbInit, initMethod, epsilon){
                    bic=bic, icl=icl, 
                    Z=best_em$Z)
       res[[i]][[j]] = res_i
+      if(verbose)
+        cat("model ", models[i] , " with ", K, " clusters finished with likelihood ", best_likelihood, "\n")
       j = j+1
     }
     i = i+1
@@ -258,7 +278,6 @@ BIC <- function(Xq, Xc, model, likelihood, K){
   else 
     n <- nrow(Xc)
   nb_par = getNbParameters(Xq, Xc, model, K)
-  print(likelihood)
   return(2*likelihood - nb_par* log(n))
 }
 getNbParameters <- function(Xq, Xc, model="VVV", K) {
@@ -315,6 +334,35 @@ split_by_var_type <- function(X) {
   return(list(Xc=X_hot, Xq=Xq, modalities = modalities))
 }
 
+
+kmeans_init <- function(Xc, Xq,K, modalities, theta) {
+  if(!is.null(Xq) && ncol(Xq)!= 0 ){
+    km <- kmeans(Xq, centers = K, nstart = 1)
+    Z = one_hot(factor(km$cluster))
+    km_theta = M_step(Xc,Xq,Z)
+    for (i in seq_along(theta)) {
+      theta[[i]]$mean = unlist(km_theta[[i]]$mean)
+      theta[[i]]$sd = as.matrix(km_theta[[i]]$sd)
+      theta[[i]]$p = unlist(km_theta[[i]]$p)
+    }
+    if(!is.null(Xc)&& ncol(Xc)!=0){
+      for (k in 1:K){
+        Z_k = Z[,k]
+        Z_Xc = Xc* Z_k
+        alpha_k = colSums(Z_Xc) / nrow(Z_Xc)
+        theta[[k]]$alpha = unlist(alpha_k) 
+      } 
+    }
+  }
+  if(!is.null(Xc) && ncol(Xc)!= 0 ){
+    for (k in 1:K){
+      theta[[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
+    }
+  }
+  
+  return(theta)
+}
+
 init_theta <- function(Xc, Xq, initMethod="random",K, modalities ) {
   dc = ncol(Xc)
   dq = ncol(Xq)
@@ -357,6 +405,10 @@ init_theta <- function(Xc, Xq, initMethod="random",K, modalities ) {
     }
     
   }
+  else if (initMethod == "kmeans") {
+    init  =kmeans_init(Xc, Xq,K, modalities, init)
+  }
+  else stop("Unknown initialization method")
   return(init)
 }
 
@@ -407,6 +459,9 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
   last_likelihood = -Inf
   current_likelihood= -Inf
   theta = theta_0
+  iter = 0
+  best_theta = NULL
+  best_likelihood = -Inf
   repeat{
     last_likelihood = current_likelihood
     Z <- E_Step2(theta, Xc, Xq, model)
@@ -428,8 +483,14 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     "
     new_theta = M_step(Xc, Xq, Z, model)
     current_likelihood = process_likelihood2(Xc, Xq, Z, new_theta)
+    if(current_likelihood > best_likelihood){
+      best_likelihood = current_likelihood
+      best_theta  = new_theta
+    }
+    
     theta = new_theta
     likelihood_diff = current_likelihood - last_likelihood
+
     #tryCatch({
       #if (likelihood_diff < 0){
       #  cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
@@ -441,8 +502,14 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
      # break
     #})
       #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
+    iter  = iter +1
     if (abs(likelihood_diff) < epsilon)
       break
+    if(iter >= 1000){
+      current_likelihood = best_likelihood
+      new_theta = best_theta
+      break
+    }
   }
   res = list(likelihood= current_likelihood, Z=Z, theta= new_theta)
   return(res)
