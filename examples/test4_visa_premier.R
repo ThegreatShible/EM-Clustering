@@ -56,11 +56,11 @@ for (j in ncol(data_continuous):1){
 }
 summary(data_continuous)
 
-res=PCAmix(data_continuous,data_categ,rename.level=TRUE,ndim=50)
+#res=PCAmix(data_continuous,data_categ,rename.level=TRUE,ndim=50)
 # we can also plot the individual with different color following
 # they have bought or not the VisaPremier credit card
-plot(res,choice="ind",coloring.ind=data_categ$cartevp,posleg="bottomright")
-plot(res,choice="cor")
+#plot(res,choice="ind",coloring.ind=data_categ$cartevp,posleg="bottomright")
+#plot(res,choice="cor")
 
 source("../src/em.R")
 
@@ -72,7 +72,8 @@ X$nbeparlo = NULL
 X$mteparlo = NULL
 X$nbeparte = NULL
 
-clusty = clust(X, 2:5, "VVV", 1, "random", 0.1)
+clusty = clust(X, 1:6, 10, "kmeans", 0.1)
+
 
 install.packages("Rmixmod")
 library(Rmixmod)

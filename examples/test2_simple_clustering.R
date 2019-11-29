@@ -9,10 +9,8 @@ X = as.data.frame(cbind(a, b))
 plot(X)
 
 K=4
-Rprof()
-clusty = clust(X=X, nbClust=K, models="VVV",  nbInit=10, initMethod="random", epsilon=0.5)
-Rprof(NULL)
-summaryRprof()
+clusty = clust(X=X, nbClust=c(2,4,6),  nbInit=10, initMethod="kmeans", epsilon=0.5)
+
 
 for( c in clusty[[1]]) {
   print(c$icl)

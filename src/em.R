@@ -108,18 +108,6 @@ logsum <- function(x) {
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
 
-"mdnorm2 <- function(X, mean,sd,log=F) {
-  if (ncol(X) == 0) return(1)
-  #X = matrix(X, ncol=length(mean))
-  p = length(mean)
-  inv_sd = solve(sd)
-  a = ((2 * pi) ^ (p / 2)) * (det(sd) ^ (1/2))
-  reduced_X = as.matrix(sweep(X, 2, mean))
-  b = -(1/2) * rowSums((reduced_X %*% inv_sd)* reduced_X)
-  if (log) -log(a) + b
-  else (1 / a) * exp(b)
-}"
-
 mdnorm2 <- function(X,mean, sd, log=FALSE) {
   require(mvtnorm)
   noorm=dmvnorm(X, mean , sd,log = log)
@@ -215,10 +203,6 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
   Xc = newX$Xc
   Xq = newX$Xq
   modalities = newX$modalities
-  #if(is.numeric(nbClust)) nbClusts = 2:nbClust
-  #else nbClusts = nbClust
-  
-  # res is a list for all models
   res = list()
   i  = 1
   for(model in models) {
@@ -257,7 +241,8 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
           
         }
       }
-      bic = BIC(Xq,Xc, model, best_likelihood,K)
+      print(modalities)
+      bic = BIC(Xq,Xc, model, best_likelihood,K, length(modalities))
       icl = ICL(bic, best_em$Z)
       res_i = list(model=model, nbClusters=K, theta=best_em$theta, 
                    bic=bic, icl=icl, 
@@ -269,10 +254,10 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
     }
     i = i+1
   }
-  return(res)
+  return(res[[1]])
 }
 
-BIC <- function(Xq, Xc, model, likelihood, K){
+BIC <- function(Xq, Xc, model, likelihood, K,nbQualVariables){
   if(!is.null(Xq) && ncol(Xq) != 0)
     n <- nrow(Xq)
   else 
@@ -280,13 +265,13 @@ BIC <- function(Xq, Xc, model, likelihood, K){
   nb_par = getNbParameters(Xq, Xc, model, K)
   return(2*likelihood - nb_par* log(n))
 }
-getNbParameters <- function(Xq, Xc, model="VVV", K) {
+getNbParameters <- function(Xq, Xc, model="VVV", K, nbQualVariables) {
   #TODO : add the other parameters
   Qres = 0
   Cres = 0
   if(!is.null(Xq) && !ncol(Xq) == 0){
     nbUs <- ncol(Xq)
-    res = K + K*nbUs
+    res = (K-1) + K*nbUs
     nbVar = 0
     if(model == "EII"){
       nbVar=1
@@ -307,7 +292,7 @@ getNbParameters <- function(Xq, Xc, model="VVV", K) {
     Qres = nbVar + res
   }
   if (!is.null(Xc) && !ncol(Xc) == 0){
-    Cres = ncol(Xc) * K
+    Cres = (ncol(Xc)- nbQualVariables) * K
   }
   return (Qres + Cres)
 }
@@ -544,7 +529,7 @@ plot_result <- function(result) {
   to_plot = list()
   legend=c()
   i=0
-  for (model in result) {
+  for (model in list(result)) {
     for (m in model) {
       legend = c(legend, paste(c(m$model, "BIC"), collapse = " "), paste(c(m$model, "ICL"), collapse=" "))
       break
