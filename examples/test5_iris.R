@@ -1,5 +1,5 @@
 data(iris)
-source("../src/em.R")
+source("./src/em.R")
 clusty = clust(iris[,1:4], 2:5 , 20, "kmeans", 0.1)
 plot_result(clusty)
 plot(iris[,3], iris[,4], col=best_model(clusty,"bic",TRUE)$Z)

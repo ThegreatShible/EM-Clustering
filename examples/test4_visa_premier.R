@@ -66,7 +66,8 @@ source("./src/em.R")
 
 # Clustering with cartevp
 X = cbind(data_categ, data_continuous)
-
+# Clustering without cartevp variable
+X$cartevp = NULL
 X$aveparfi = NULL
 X$nbeparlo = NULL
 X$mteparlo = NULL
@@ -75,5 +76,4 @@ X$nbeparte = NULL
 clusty = clust(X, 1:6, 10, "kmeans", 0.1)
 plot_result(clusty)
 
-# Clustering without cartevp variable
-X$cartevp = NULL
+
