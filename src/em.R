@@ -1,18 +1,7 @@
 library(plot3D)
 library(mixtools)
 library(sets)
-EMtmp <- function(X, K, nb_init=10) {
-  d = ncol(X)
-  n = nrow(X)
-  
 
-  theta = create_theta(d, k)
-  proba = classify(theta, Xc, Xq)
-  
-  # E-step
-  # Store all the likelihoods in a N x k matrix
-
-}
 
 # Returns a list of length k
 # Each element contains a vector of mean, a matrix of variance,
@@ -79,19 +68,7 @@ all_fK <- function(Xc, Xq, thetas,res="f", log=FALSE){
 
 
 
-# Returns matrices of size n x k of probabilities
-# of each element belonging to each class
-E_Step <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
-  if (!is.null(Xq)) n = nrow(Xq)
-  else {
-    if (!is.null(Xc)) n = nrow(Xc)
-    else stop("Dataset is empty")
-  }
-  proba = apply(matrix(seq_along(thetas), nrow=1), 2, function(i) multinomial(Xc, thetas[[i]]$alpha) * thetas[[i]]$p * mdnorm(Xq, thetas[[i]]$mean, thetas[[i]]$sd))
-  proba = t(apply(proba, 1, function(i) i / sum(i)))
-  
-  return(proba)
-}
+
 E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   lZ_temp = all_fK(Xc=Xc, Xq=Xq, thetas=thetas, log=T)
   lPs = sapply(thetas, function(theta) log(theta$p))
