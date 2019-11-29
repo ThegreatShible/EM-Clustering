@@ -68,7 +68,8 @@ all_fK <- function(Xc, Xq, thetas,res="f", log=FALSE){
 
 
 
-
+# Returns matrices of size n x k of probabilities
+# of each element belonging to each class
 E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   lZ_temp = all_fK(Xc=Xc, Xq=Xq, thetas=thetas, log=T)
   lPs = sapply(thetas, function(theta) log(theta$p))
@@ -370,48 +371,7 @@ init_theta <- function(Xc, Xq, initMethod="random",K, modalities ) {
   return(init)
 }
 
-init_thetas <- function(Xc, Xq, initMethod, nbInit, K,modalities){
-  #modalities = get_nb_modalities(Xc)
-  #dc = sum(modalities)
-  #because we one hot the vector at the beggining
-  dc = ncol(Xc)
-  dq = ncol(Xq)
-  inits = rep(list(create_theta(dq, dc, K)), nbInit)
-  if (initMethod == "random") {
-    if(!dq == 0){
-      minX = apply(Xq, 2, min)
-      maxX = apply(Xq, 2, max)
-      totaldiff =maxX - minX
-    }
-    for (i in seq_along(inits)) {
-      p = runif(K)
-      p = p / sum(p)
-      for (k in seq_along(inits[[i]])) {
-        # generate Means and deviation between min and max of each dimension
-        if(!dq == 0) {
-          
-          sd_mean = as.numeric((totaldiff)/(4*K))
-          mean_mean = sapply(totaldiff, function(t) (k-1) * t + t/2)
-          means = sapply(1:dq, function(i) rnorm(1, mean_mean[i], sd_mean[i]) )
-          inits[[i]][[k]]$mean = as.numeric(means)
 
-          # TODO : How should a random sd look ? diagonal ? triangular ? full (hmm no) ?
-          det = 0
-          while(det == 0) {
-            mean_sd=  as.numeric(totaldiff/K)
-            sd = t(sapply(1:dq ,function(i) abs(rnorm(dq,mean = mean_sd[i],mean_sd[i]))))
-            det = det(sd)
-          }
-          inits[[i]][[k]]$sd = as.matrix(sd)
-        }
-        if(!dc == 0)
-          inits[[i]][[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
-        inits[[i]][[k]]$p = p[k]
-      }
-    }
-  }
-  return(inits)
-}
 
 EM <- function(Xc, Xq, theta_0, model, epsilon){
   last_likelihood = -Inf
@@ -530,7 +490,7 @@ plot_result <- function(result) {
   }
 }
 
-best_model <- function(result, criterion="icl", best_cluster=F){
+best_model <- function(result, criterion="icl", best_cluster=T){
   if(criterion == "bic"){
     best = NULL
     for(model in result){
