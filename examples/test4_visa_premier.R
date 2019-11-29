@@ -15,7 +15,7 @@ is_constant <- function(var) {
   else return(all(var == var[1]))
 }
 
-data=read.table("../data/VisaPremier.txt",header=TRUE,na.strings =".")
+data=read.table("./data/VisaPremier.txt",header=TRUE,na.strings =".")
 
 # Second individual is too different
 data = data[-2,]
@@ -62,7 +62,7 @@ summary(data_continuous)
 #plot(res,choice="ind",coloring.ind=data_categ$cartevp,posleg="bottomright")
 #plot(res,choice="cor")
 
-source("../src/em.R")
+source("./src/em.R")
 
 # Clustering with cartevp
 X = cbind(data_categ, data_continuous)
@@ -73,16 +73,7 @@ X$mteparlo = NULL
 X$nbeparte = NULL
 
 clusty = clust(X, 1:6, 10, "kmeans", 0.1)
-
-
-install.packages("Rmixmod")
-library(Rmixmod)
-mixmodCluster(data=X, nbCluster=1:4, dataType="composite")
-
-coord <- function(n, x) {
-  l = floor((n-1)/x)
-  c(l + 1, n - l*x)
-}
+plot_result(clusty)
 
 # Clustering without cartevp variable
 X$cartevp = NULL
