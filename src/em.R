@@ -191,6 +191,8 @@ M_step <- function(Xc, Xq, Z, model){
 
 clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verbose=T){
   models = c("VVV")
+  if(initMethod != "kmeans" && initMethod != "random")
+      stop("Wrong initMethod: must be either kmeans or random ")
   if(is.null(X) || nrow(X)==0 || ncol(X) == 0)
     stop("Error : Empty dataset")
   for (i in nbClust)
@@ -232,16 +234,10 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
                 best_em = em
               }
               succInit = succInit+1
-            #}, 
-            #error = function(error_condition){
-            #  print(error_condition)
-            #}
-          #)
           
           
         }
       }
-      print(modalities)
       bic = BIC(Xq,Xc, model, best_likelihood,K, length(modalities))
       icl = ICL(bic, best_em$Z)
       res_i = list(model=model, nbClusters=K, theta=best_em$theta, 
@@ -262,7 +258,7 @@ BIC <- function(Xq, Xc, model, likelihood, K,nbQualVariables){
     n <- nrow(Xq)
   else 
     n <- nrow(Xc)
-  nb_par = getNbParameters(Xq, Xc, model, K)
+  nb_par = getNbParameters(Xq, Xc, model, K,nbQualVariables)
   return(2*likelihood - nb_par* log(n))
 }
 getNbParameters <- function(Xq, Xc, model="VVV", K, nbQualVariables) {
@@ -555,4 +551,34 @@ plot_result <- function(result) {
     points(p[1,], p[3,], col=i)
     lines(p[1,], p[3,], col=i)
   }
+}
+
+best_model <- function(result, criterion="icl", best_cluster=F){
+  if(criterion == "bic"){
+    best = NULL
+    for(model in result){
+      if(is.null(best))
+        best = model
+      else if(model$bic > best$bic) {
+        best = model
+      }
+    }
+  }else if(criterion == "icl"){
+    best = NULL
+    for(model in result){
+      if(is.null(best))
+        best = model
+      else if(model$icl > best$icl) {
+        best = model
+      }
+    }
+  }else {
+    stop("Unknown criterion")
+  }
+  if(best_cluster){
+    newZ = apply(best$Z, 1, which.max)
+    best$Z = newZ
+  }
+  best
+  
 }
