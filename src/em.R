@@ -81,8 +81,8 @@ E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   Z
 }
 logsum <- function(x) {
-  #sum(x)
-  max(x) + log(sum(exp(x - max(x))))
+  res = max(x) + log(sum(exp(x - max(x))))
+  return (res)
 }
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
@@ -90,10 +90,10 @@ logsum <- function(x) {
 mdnorm2 <- function(X,mean, sd, log=FALSE) {
   require(mvtnorm)
   noorm=dmvnorm(X, mean , sd,log = log)
-  noorm = replace(noorm, which(noorm==Inf), 10)
-  if(log){
-    noorm = replace(noorm, which(noorm==-Inf), -5)
-  }
+  #noorm = replace(noorm, which(noorm==Inf), 10)
+  #if(log){
+  #  noorm = replace(noorm, which(noorm==-Inf), -5)
+  #}
   noorm
 }
 
@@ -156,8 +156,9 @@ M_step <- function(Xc, Xq, Z, model){
       #  sd_k = diag(rep(0.01,nqCol))
       #}
       
-      if(det(sd_k) < 1e-200){
-        sd_k = diag(rep(0.01,nqCol))
+      if(det(sd_k) < 1e-300){
+        stop("Non invertible matrix")
+        #sd_k = diag(rep(0.01,nqCol))
       }
       theta[[k]]$mean = mean_k
       theta[[k]]$sd = sd_k
@@ -203,24 +204,33 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
       if (K == 1) {
         Z <- matrix(1, nrow=nrow(Xq), ncol=1)
         best_theta = M_step(Xc,Xq, Z)
-        best_likelihood = process_likelihood2(Xc, Xq, Z, best_theta)
+        best_likelihood = process_likelihood2(Xc, Xq, best_theta)
         best_em = list(likelihood= best_likelihood, Z=Z, theta= best_theta)
         
       }else {
-        while((succInit < nbInit) && (iter < 10*nbInit || is.null(best_theta))){
+        nbErrors = 0
+        while((succInit < nbInit) && (iter < 2*nbInit || is.null(best_theta)) && nbErrors < 10){
           iter = iter + 1
-          theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities,initMethod=initMethod)
-          #tryCatch({
+          
+          tryCatch({
+            nbErrors = nbErrors + 1
+            theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities,initMethod=initMethod)
               em = EM(Xc, Xq, theta_0, model, epsilon)
               if(em$likelihood > best_likelihood){
                 best_likelihood = em$likelihood
                 best_em = em
               }
               succInit = succInit+1
-          
-          
+              nbErrors = nbErrors - 1
+          }, error = function(error_condition){
+            
+            print(nbErrors)
+            print("it is here")
+          })
         }
       }
+      if(nbErrors == 10)
+        stop("Can't continue execution : Non invertible matrix")
       bic = BIC(Xq,Xc, model, best_likelihood,K, length(modalities))
       icl = ICL(bic, best_em$Z)
       res_i = list(model=model, nbClusters=K, theta=best_em$theta, 
@@ -303,7 +313,7 @@ split_by_var_type <- function(X) {
 
 kmeans_init <- function(Xc, Xq,K, modalities, theta) {
   if(!is.null(Xq) && ncol(Xq)!= 0 ){
-    km <- kmeans(Xq, centers = K, nstart = 1)
+    km <- kmeans(Xq, centers = K, nstart = 5)
     Z = one_hot(factor(km$cluster))
     km_theta = M_step(Xc,Xq,Z)
     for (i in seq_along(theta)) {
@@ -392,22 +402,25 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
     Z <- E_Step2(theta, Xc, Xq, model)
     Z = t(apply(Z, 1, function(z) {
       if (sum(is.nan(z))>1) {
+        print("is.nan z")
         zz=runif(length(z))
         return(zz/sum(zz))
       }
       else return(z)
     }))
     if (sum(is.nan(Z)) > 1) {
-      print(Z)
+      print("Z contains NaN")
     }
-    "
-      plot(Xq)
-      for (t in theta) {
-        ellipse(t$mean, t$sd)
-      }
-    "
+    
+      #plot(Xq)
+      #for (t in theta) {
+      #  ellipse(t$mean, t$sd)
+      #}
+    
     new_theta = M_step(Xc, Xq, Z, model)
-    current_likelihood = process_likelihood2(Xc, Xq, Z, new_theta)
+    current_likelihood = process_likelihood2(Xc, Xq,  new_theta)
+
+
     if(current_likelihood > best_likelihood){
       best_likelihood = current_likelihood
       best_theta  = new_theta
@@ -441,23 +454,20 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
 }
 
 
-process_likelihood2 <- function(Xc, Xq, Z, thetas) {
+process_likelihood2 <- function(Xc, Xq, thetas) {
   fc <- all_fK(Xc, NULL, thetas, res="fc", log=TRUE)
   fq <- all_fK(NULL, Xq, thetas, res="fq", log=TRUE)
-  
-  #zeros = (fc == 0)
-  #fc = replace(fc, zeros, .Machine$double.xmin)
-  #zeros = (fq == 0)
-  #fq = replace(fq, zeros, .Machine$double.xmin)
-  
   lfc = fc
   lfq = fq
   ps= sapply(thetas, function(theta) theta$p)
   lp = log(ps)
   logdens= sweep(lfq+lfc, 2, lp, "+")
-  
-  res <- Z * (logdens)
-  return(sum(res))
+  log_fxi = apply(logdens, 1, logsum)
+  log_like = sum(log_fxi)
+  if(log_like > 0){
+    print("here")
+  }
+  return(log_like)
   
 }
 
