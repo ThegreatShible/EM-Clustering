@@ -8,8 +8,8 @@ X = as.data.frame(cbind(a, b))
 
 plot(X)
 
-K=4
-clusty = clust(X=X, nbClust=c(2,4,6),  nbInit=10, initMethod="kmeans", epsilon=0.5)
+K=2:4
+clusty = clust(X=X, nbClust=K,  nbInit=1, initMethod="kmeans", epsilon=0.5)
 
 plot_result(clusty)
 plot(X[,1], X[,2], col=best_model(clusty, best_cluster = T)$Z)
