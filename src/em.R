@@ -76,11 +76,12 @@ E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
   lZ_temp = sweep(lZ_temp, 2, lPs, "+")
   lZ = lZ_temp - apply(lZ_temp, 1, logsum)
   Z = exp(lZ)
-  zeros = (Z == 0)
-  Z = replace(Z, zeros, .Machine$double.xmin)
+  #zeros = (Z == 0)
+  #Z = replace(Z, zeros, .Machine$double.xmin)
   Z
 }
 logsum <- function(x) {
+  #sum(x)
   max(x) + log(sum(exp(x - max(x))))
 }
 # Equivalent of function dnorm but takes as inputs
@@ -148,10 +149,14 @@ M_step <- function(Xc, Xq, Z, model){
       X_centered = t(apply(Xq, 1, function(i) i - mean_k))
       sd_k = matrix(0, nrow=nqCol, ncol=nqCol)
       for (i in (1: n)) {
-        mat = norm_tk[i] * X_centered[i,] %*% t(X_centered[i,])
+        mat = norm_tk[i] * (X_centered[i,] %*% t(X_centered[i,]))
         sd_k = sd_k + mat
       }
-      if (det(sd_k) < 1e-4) {
+      #if (det(sd_k) < 1e-4) {
+      #  sd_k = diag(rep(0.01,nqCol))
+      #}
+      
+      if(det(sd_k) < 1e-200){
         sd_k = diag(rep(0.01,nqCol))
       }
       theta[[k]]$mean = mean_k
@@ -204,7 +209,7 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
       }else {
         while((succInit < nbInit) && (iter < 10*nbInit || is.null(best_theta))){
           iter = iter + 1
-          theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities)
+          theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities,initMethod=initMethod)
           #tryCatch({
               em = EM(Xc, Xq, theta_0, model, epsilon)
               if(em$likelihood > best_likelihood){
@@ -272,7 +277,9 @@ getNbParameters <- function(Xq, Xc, model="VVV", K, nbQualVariables) {
 }
 ICL <- function(bic, Z){
   log_z = log(Z)
-  e_m <- sum((Z*log_z))
+  z_log_z = (Z*log_z)
+  z_log_z[is.nan(z_log_z) ] = 0
+  e_m <- sum(z_log_z)
   return(bic + e_m )
 }
 
@@ -322,7 +329,7 @@ kmeans_init <- function(Xc, Xq,K, modalities, theta) {
   return(theta)
 }
 
-init_theta <- function(Xc, Xq, initMethod="random",K, modalities ) {
+init_theta <- function(Xc, Xq, initMethod="kmeans",K, modalities ) {
   dc = ncol(Xc)
   dq = ncol(Xq)
   init = create_theta(dq, dc, K)
