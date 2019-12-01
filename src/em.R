@@ -7,7 +7,7 @@ library(sets)
 # Each element contains a vector of mean, a matrix of variance,
 # a vector alphas of length the total number of modalities and
 # a propobability pk
-create_theta <- function(dq, dc, k) {
+.create_theta <- function(dq, dc, k) {
   # dq : Dimension of quantitative variables
   # dc : Number of modalities of all categorial variables
   one_theta = list()
@@ -29,7 +29,7 @@ create_theta <- function(dq, dc, k) {
 
 #Process f(x|K) with K being the cluster and Xc and Xq matrices
 #Returns fc : f(Xc), fq : f(Xq), f: f(Xc::Xq)
-fK <- function(Xc, Xq, alphas, mean, sd,log) {
+.fK <- function(Xc, Xq, alphas, mean, sd,log) {
   if(log){
     fXc = 0
     fXq = 0
@@ -37,12 +37,12 @@ fK <- function(Xc, Xq, alphas, mean, sd,log) {
     fXc = 1
     fXq = 1
   }
- 
+  
   if(!is.null(Xc) && !ncol(Xc) == 0){
-    fXc = multinomial2(Xc, alphas,log=log)
+    fXc = .multinomial2(Xc, alphas,log=log)
   }
   if(!is.null(Xq) && !ncol(Xq) == 0) {
-    fXq = mdnorm2(Xq, mean, sd, log)
+    fXq = .mdnorm2(Xq, mean, sd, log)
   }
   
   if(log){
@@ -55,13 +55,13 @@ fK <- function(Xc, Xq, alphas, mean, sd,log) {
 
 #Process f(X|K)*Pk with K being the cluster, for each K
 #Returns a matrix of N*K with N = number of observations and K number of clusters
-all_fK <- function(Xc, Xq, thetas,res="f", log=FALSE){
+.all_fK <- function(Xc, Xq, thetas,res="f", log=FALSE){
   if(res=="fq"){
-    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd, log)$fq))
+    return(sapply(thetas, function(theta) .fK(Xc,Xq, theta$alpha, theta$mean, theta$sd, log)$fq))
   }else if(res=="fc") {
-    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd, log)$fc))
+    return(sapply(thetas, function(theta) .fK(Xc,Xq, theta$alpha, theta$mean, theta$sd, log)$fc))
   }else {
-    return(sapply(thetas, function(theta) fK(Xc,Xq, theta$alpha, theta$mean, theta$sd,log)$f))
+    return(sapply(thetas, function(theta) .fK(Xc,Xq, theta$alpha, theta$mean, theta$sd,log)$f))
   }
 }
 
@@ -70,24 +70,24 @@ all_fK <- function(Xc, Xq, thetas,res="f", log=FALSE){
 
 # Returns matrices of size n x k of probabilities
 # of each element belonging to each class
-E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
-  lZ_temp = all_fK(Xc=Xc, Xq=Xq, thetas=thetas, log=T)
+.E_Step2 <- function(thetas, Xc=NULL, Xq=NULL, model="VVV") {
+  lZ_temp = .all_fK(Xc=Xc, Xq=Xq, thetas=thetas, log=T)
   lPs = sapply(thetas, function(theta) log(theta$p))
   lZ_temp = sweep(lZ_temp, 2, lPs, "+")
-  lZ = lZ_temp - apply(lZ_temp, 1, logsum)
+  lZ = lZ_temp - apply(lZ_temp, 1, .logsum)
   Z = exp(lZ)
   #zeros = (Z == 0)
   #Z = replace(Z, zeros, .Machine$double.xmin)
   Z
 }
-logsum <- function(x) {
+.logsum <- function(x) {
   res = max(x) + log(sum(exp(x - max(x))))
   return (res)
 }
 # Equivalent of function dnorm but takes as inputs
 # a vector of mean and a matrix of standard deviation
 
-mdnorm2 <- function(X,mean, sd, log=FALSE) {
+.mdnorm2 <- function(X,mean, sd, log=FALSE) {
   require(mvtnorm)
   noorm=dmvnorm(X, mean , sd,log = log)
   #noorm = replace(noorm, which(noorm==Inf), 10)
@@ -98,12 +98,12 @@ mdnorm2 <- function(X,mean, sd, log=FALSE) {
 }
 
 
-get_nb_modalities <- function(X) {
+.get_nb_modalities <- function(X) {
   if (is.null(X) || ncol(X) == 0) return(0)
   return(apply(X, 2, function(c) length(levels(factor(c)))))
 }
 
-multinomial2 <- function(Xc, alphas, log=FALSE){
+.multinomial2 <- function(Xc, alphas, log=FALSE){
   n <- nrow(Xc)
   alphaMat <- matrix(rep(alphas,each=n), nrow=n)
   if (!log) {
@@ -119,9 +119,9 @@ multinomial2 <- function(Xc, alphas, log=FALSE){
 }
 
 
-  
 
-one_hot <- function(x) {
+
+.one_hot <- function(x) {
   lvl = levels(x)
   len = length(lvl)
   t(apply(matrix(x, ncol=1), 1, function(i) {
@@ -132,7 +132,7 @@ one_hot <- function(x) {
 }
 
 #TODO : check if quanti and quali are non null
-M_step <- function(Xc, Xq, Z, model){
+.M_step <- function(Xc, Xq, Z, model){
   
   # Temporary : To be moved to VVV model
   tryCatch({
@@ -140,57 +140,57 @@ M_step <- function(Xc, Xq, Z, model){
     
     
     
-  
-  K = ncol(Z)
-  n = nrow(Xc)
-  nqCol = ncol(Xq)
-  ncCol = ncol(Xc)
-  theta = create_theta(ncol(Xq), ncol(Xc), K)
-  for (k in seq(K)) {
-    tk = Z[,k]
-    nk = sum(tk)
-    norm_tk = tk/nk
-    pk = nk / n
-    if(!nqCol == 0){
-      mean_k = apply(Xq * norm_tk, 2, sum)
-      
-      if(nqCol == 1){
-        X_centered = apply(Xq, 1, function(i) i - mean_k)
-        sd_k = 0
-        for (i in (1: n)) {
-          mat = norm_tk[i] * (t(X_centered[i]) %*% X_centered[i])
-          sd_k = sd_k + mat
-        }
-      }
-      else{
-        X_centered = t(apply(Xq, 1, function(i) i - mean_k))
-        
-        sd_k = matrix(0, nrow=nqCol, ncol=nqCol)
-        for (i in (1: n)) {
-          mat = norm_tk[i] * (X_centered[i,] %*% t(X_centered[i,]))
-          sd_k = sd_k + mat
-        }
-        if(det(sd_k) < 1e-300){
-          stop("Non invertible matrix in M_step")
-          #sd_k = diag(rep(0.01,nqCol))
-        }
-      }
-     
-      #if (det(sd_k) < 1e-4) {
-      #  sd_k = diag(rep(0.01,nqCol))
-      #}
-      
-      
-      theta[[k]]$mean = mean_k
-      theta[[k]]$sd = sd_k
-    }
-    if(!ncol(Xc) == 0) {
-      theta[[k]]$alpha = colSums(tk * Xc) / sum(tk)
-    }
     
-    theta[[k]]$p = pk
-  }
-  return(theta)
+    K = ncol(Z)
+    n = nrow(Xc)
+    nqCol = ncol(Xq)
+    ncCol = ncol(Xc)
+    theta = .create_theta(ncol(Xq), ncol(Xc), K)
+    for (k in seq(K)) {
+      tk = Z[,k]
+      nk = sum(tk)
+      norm_tk = tk/nk
+      pk = nk / n
+      if(!nqCol == 0){
+        mean_k = apply(Xq * norm_tk, 2, sum)
+        
+        if(nqCol == 1){
+          X_centered = apply(Xq, 1, function(i) i - mean_k)
+          sd_k = 0
+          for (i in (1: n)) {
+            mat = norm_tk[i] * (t(X_centered[i]) %*% X_centered[i])
+            sd_k = sd_k + mat
+          }
+        }
+        else{
+          X_centered = t(apply(Xq, 1, function(i) i - mean_k))
+          
+          sd_k = matrix(0, nrow=nqCol, ncol=nqCol)
+          for (i in (1: n)) {
+            mat = norm_tk[i] * (X_centered[i,] %*% t(X_centered[i,]))
+            sd_k = sd_k + mat
+          }
+          if(det(sd_k) < 1e-300){
+            stop("Non invertible matrix in M_step")
+            #sd_k = diag(rep(0.01,nqCol))
+          }
+        }
+        
+        #if (det(sd_k) < 1e-4) {
+        #  sd_k = diag(rep(0.01,nqCol))
+        #}
+        
+        
+        theta[[k]]$mean = mean_k
+        theta[[k]]$sd = sd_k
+      }
+      if(!ncol(Xc) == 0) {
+        theta[[k]]$alpha = colSums(tk * Xc) / sum(tk)
+      }
+      
+      theta[[k]]$p = pk
+    }
+    return(theta)
   }, error = function(error_condition){
     return (NULL)
   })
@@ -200,7 +200,7 @@ M_step <- function(Xc, Xq, Z, model){
 clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, nbIterations =30, verbose=T){
   models = c("VVV")
   if(initMethod != "kmeans" && initMethod != "random")
-      stop("Wrong initMethod: must be either kmeans or random ")
+    stop("Wrong initMethod: must be either kmeans or random ")
   if(is.null(X) || nrow(X)==0 || ncol(X) == 0)
     stop("Error : Empty dataset")
   for (i in nbClust)
@@ -209,7 +209,7 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, nbIt
   nbClust = as.set(nbClust)
   if (nbInit <= 0 || round(nbInit) != nbInit)
     stop("wrong nbInit : must be a non null natural number")
-  newX = split_by_var_type(X)
+  newX = .split_by_var_type(X)
   Xc = newX$Xc
   Xq = newX$Xq
   modalities = newX$modalities
@@ -220,55 +220,55 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, nbIt
     # A particular model is a sub list for all clusters
     res[[i]] = list()
     for (K in nbClust){
- 
+      
       best_likelihood = -Inf
       best_theta = NULL
       succInit = 0
       iter = 0
       nbErrors = 0
       
-        
-        while((succInit < nbInit) && (iter < 2*nbInit || is.null(best_theta)) && nbErrors < 20){
-          iter = iter + 1
-          if (K == 1) {
-            Z <- matrix(1, nrow=nrow(Xq), ncol=1)
-            best_theta = M_step(Xc,Xq, Z)
-            if(!is.null(best_theta)){
-              best_likelihood = process_likelihood2(Xc, Xq, best_theta)
-              best_em = list(likelihood= best_likelihood, Z=Z, theta= best_theta)
-            }else {
-              nbErrors = nbErrors+1
-              next
-            }
-            
-            
+      
+      while((succInit < nbInit) && (iter < 2*nbInit || is.null(best_theta)) && nbErrors < 20){
+        iter = iter + 1
+        if (K == 1) {
+          Z <- matrix(1, nrow=nrow(Xq), ncol=1)
+          best_theta = .M_step(Xc,Xq, Z)
+          if(!is.null(best_theta)){
+            best_likelihood = .process_likelihood2(Xc, Xq, best_theta)
+            best_em = list(likelihood= best_likelihood, Z=Z, theta= best_theta)
           }else {
-          
-  
-            theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities,initMethod=initMethod)
-            if(is.null(theta_0)){
-              nbErrors = nbErrors + 1
-              next
-            }
-              em = EM(Xc, Xq, theta_0, model, epsilon, nbIterations)
-              if(em$likelihood == -Inf){
-                nbErrors = nbErrors + 1
-                next
-              }
-              if(em$likelihood > best_likelihood){
-                best_likelihood = em$likelihood
-                best_em = em
-              }
-              
+            nbErrors = nbErrors+1
+            next
           }
-          succInit = succInit+1
+          
+          
+        }else {
+          
+          
+          theta_0 = .init_theta(Xc,Xq,K=K,modalities = modalities,initMethod=initMethod)
+          if(is.null(theta_0)){
+            nbErrors = nbErrors + 1
+            next
+          }
+          em = .EM(Xc, Xq, theta_0, model, epsilon, nbIterations)
+          if(em$likelihood == -Inf){
+            nbErrors = nbErrors + 1
+            next
+          }
+          if(em$likelihood > best_likelihood){
+            best_likelihood = em$likelihood
+            best_em = em
+          }
+          
+        }
+        succInit = succInit+1
       }
       if(nbErrors == 20 && best_likelihood ==-Inf)
         stop("Can't continue execution : Non invertible matrix")
-      bic = BIC(Xq,Xc, model, best_likelihood,K, length(modalities))
-      icl = ICL(bic, best_em$Z)
-      res_i = list(model=model, nbClusters=K, theta=best_em$theta, 
-                   bic=bic, icl=icl, 
+      bic = .BIC(Xq,Xc, model, best_likelihood,K, length(modalities))
+      icl = .ICL(bic, best_em$Z)
+      res_i = list(model=model, nbClusters=K, theta=best_em$theta,
+                   bic=bic, icl=icl,
                    Z=best_em$Z)
       res[[i]][[j]] = res_i
       if(verbose)
@@ -280,15 +280,15 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, nbIt
   return(res[[1]])
 }
 
-BIC <- function(Xq, Xc, model, likelihood, K,nbQualVariables){
+.BIC <- function(Xq, Xc, model, likelihood, K,nbQualVariables){
   if(!is.null(Xq) && ncol(Xq) != 0)
     n <- nrow(Xq)
-  else 
+  else
     n <- nrow(Xc)
-  nb_par = getNbParameters(Xq, Xc, model, K,nbQualVariables)
+  nb_par = .getNbParameters(Xq, Xc, model, K,nbQualVariables)
   return(2*likelihood - nb_par* log(n))
 }
-getNbParameters <- function(Xq, Xc, model="VVV", K, nbQualVariables) {
+.getNbParameters <- function(Xq, Xc, model="VVV", K, nbQualVariables) {
   #TODO : add the other parameters
   Qres = 0
   Cres = 0
@@ -319,7 +319,7 @@ getNbParameters <- function(Xq, Xc, model="VVV", K, nbQualVariables) {
   }
   return (Qres + Cres)
 }
-ICL <- function(bic, Z){
+.ICL <- function(bic, Z){
   log_z = log(Z)
   z_log_z = (Z*log_z)
   z_log_z[is.nan(z_log_z) ] = 0
@@ -327,7 +327,7 @@ ICL <- function(bic, Z){
   return(bic + e_m )
 }
 
-split_by_var_type <- function(X) {
+.split_by_var_type <- function(X) {
   n = nrow(X)
   num = unlist(lapply(X, is.numeric))
   Xq = as.data.frame(X[,num])
@@ -337,57 +337,57 @@ split_by_var_type <- function(X) {
   modalities = 0
   if(p != 0){
     for (j in seq(p)) {
-      X_hot = cbind(X_hot, one_hot(factor(Xc[,j])))
+      X_hot = cbind(X_hot, .one_hot(factor(Xc[,j])))
     }
-  modalities = get_nb_modalities(Xc)
+    modalities = .get_nb_modalities(Xc)
   }else X_hot= Xc
   return(list(Xc=X_hot, Xq=Xq, modalities = modalities))
 }
 
 
-kmeans_init <- function(Xc, Xq,K, modalities, theta) {
+.kmeans_init <- function(Xc, Xq,K, modalities, theta) {
   if(!is.null(Xq) && ncol(Xq)!= 0 ){
     km <- kmeans(Xq, centers = K, nstart = 5)
-    Z = one_hot(factor(km$cluster))
-    km_theta = M_step(Xc,Xq,Z)
+    Z = .one_hot(factor(km$cluster))
+    km_theta = .M_step(Xc,Xq,Z)
     if(is.null(km_theta)){
       return (NULL)
     }else {
-    for (i in seq_along(theta)) {
-      theta[[i]]$mean = unlist(km_theta[[i]]$mean)
-      theta[[i]]$sd = as.matrix(km_theta[[i]]$sd)
-      theta[[i]]$p = unlist(km_theta[[i]]$p)
+      for (i in seq_along(theta)) {
+        theta[[i]]$mean = unlist(km_theta[[i]]$mean)
+        theta[[i]]$sd = as.matrix(km_theta[[i]]$sd)
+        theta[[i]]$p = unlist(km_theta[[i]]$p)
+      }
+      if(!is.null(Xc)&& ncol(Xc)!=0){
+        for (k in 1:K){
+          Z_k = Z[,k]
+          Z_Xc = Xc* Z_k
+          alpha_k = colSums(Z_Xc) / nrow(Z_Xc)
+          theta[[k]]$alpha = unlist(alpha_k)
+        }
+      }
     }
-    if(!is.null(Xc)&& ncol(Xc)!=0){
+    if(!is.null(Xc) && ncol(Xc)!= 0 ){
       for (k in 1:K){
-        Z_k = Z[,k]
-        Z_Xc = Xc* Z_k
-        alpha_k = colSums(Z_Xc) / nrow(Z_Xc)
-        theta[[k]]$alpha = unlist(alpha_k) 
-      } 
+        theta[[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
+      }
     }
-  }
-  if(!is.null(Xc) && ncol(Xc)!= 0 ){
-    for (k in 1:K){
-      theta[[k]]$alpha = unlist(lapply(modalities, function(i) { p=runif(i,0,1); return(p/sum(p)) }))
-    }
-  }
-  
-  return(theta)
+    
+    return(theta)
   }
 }
 
-init_theta <- function(Xc, Xq, initMethod="kmeans",K, modalities ) {
+.init_theta <- function(Xc, Xq, initMethod="kmeans",K, modalities ) {
   dc = ncol(Xc)
   dq = ncol(Xq)
-  init = create_theta(dq, dc, K)
+  init = .create_theta(dq, dc, K)
   if (initMethod == "random") {
     if(!dq == 0){
       minX = as.numeric(apply(Xq, 2, min))
       maxX = as.numeric(apply(Xq, 2, max))
       totaldiff =maxX - minX
     }
-  
+    
     p = runif(K)
     p = p / sum(p)
     
@@ -420,7 +420,7 @@ init_theta <- function(Xc, Xq, initMethod="kmeans",K, modalities ) {
     
   }
   else if (initMethod == "kmeans") {
-    init  =kmeans_init(Xc, Xq,K, modalities, init)
+    init  =.kmeans_init(Xc, Xq,K, modalities, init)
   }
   else stop("Unknown initialization method")
   return(init)
@@ -428,7 +428,7 @@ init_theta <- function(Xc, Xq, initMethod="kmeans",K, modalities ) {
 
 
 
-EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
+.EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
   last_likelihood = -Inf
   current_likelihood= -Inf
   theta = theta_0
@@ -438,7 +438,7 @@ EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
   it = 0
   repeat{
     last_likelihood = current_likelihood
-    Z <- E_Step2(theta, Xc, Xq, model)
+    Z <- .E_Step2(theta, Xc, Xq, model)
     Z = t(apply(Z, 1, function(z) {
       if (sum(is.nan(z))>1) {
         zz=runif(length(z))
@@ -446,16 +446,16 @@ EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
       }
       else return(z)
     }))
-
     
-      #plot(Xq)
-      #for (t in theta) {
-      #  ellipse(t$mean, t$sd)
-      #}
     
-    new_theta = M_step(Xc, Xq, Z, model)
+    #plot(Xq)
+    #for (t in theta) {
+    #  ellipse(t$mean, t$sd)
+    #}
+    
+    new_theta = .M_step(Xc, Xq, Z, model)
     if(!is.null(new_theta)){
-      current_likelihood = process_likelihood2(Xc, Xq,  new_theta)
+      current_likelihood = .process_likelihood2(Xc, Xq,  new_theta)
       if(current_likelihood > best_likelihood){
         best_likelihood = current_likelihood
         best_theta  = new_theta
@@ -464,14 +464,14 @@ EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
         if (abs(likelihood_diff) < epsilon)
           break
       }
-      }else{
-       current_likelihood = -Inf 
-      } 
-      
-      iter  = iter +1
-      it = it+1
-      
-   
+    }else{
+      current_likelihood = -Inf
+    }
+    
+    iter  = iter +1
+    it = it+1
+    
+    
     if(iter >= nbIterations){
       break
     }
@@ -481,17 +481,17 @@ EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
 }
 
 
-process_likelihood2 <- function(Xc, Xq, thetas) {
-  fc <- all_fK(Xc, NULL, thetas, res="fc", log=TRUE)
-  fq <- all_fK(NULL, Xq, thetas, res="fq", log=TRUE)
+.process_likelihood2 <- function(Xc, Xq, thetas) {
+  fc <- .all_fK(Xc, NULL, thetas, res="fc", log=TRUE)
+  fq <- .all_fK(NULL, Xq, thetas, res="fq", log=TRUE)
   lfc = fc
   lfq = fq
   ps= sapply(thetas, function(theta) theta$p)
   lp = log(ps)
   logdens= sweep(lfq+lfc, 2, lp, "+")
-  log_fxi = apply(logdens, 1, logsum)
+  log_fxi = apply(logdens, 1, .logsum)
   log_like = sum(log_fxi)
-
+  
   return(log_like)
   
 }
@@ -513,7 +513,7 @@ plot_result <- function(result) {
     p = matrix(unlist(lapply(model, function(m) c(m$nbClusters, m$bic, m$icl))), nrow=3)
     to_plot[[i]] = p
     k = p[1,]
-
+    
     xmax=max(xmax, max(k))
     xmin=min(xmin, min(k))
     ymax=max(ymax, max(p[-1,]))
