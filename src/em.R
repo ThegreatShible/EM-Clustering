@@ -112,6 +112,7 @@ multinomial2 <- function(Xc, alphas, log=FALSE){
   } else {
     logAlpha <- log(alphaMat)
     mulMat <- logAlpha*Xc
+    mulMat[is.na(mulMat)] <- 0
     res <- rowSums(mulMat)
     return(res)
   }
@@ -146,20 +147,34 @@ M_step <- function(Xc, Xq, Z, model){
     pk = nk / n
     if(!nqCol == 0){
       mean_k = apply(Xq * norm_tk, 2, sum)
-      X_centered = t(apply(Xq, 1, function(i) i - mean_k))
-      sd_k = matrix(0, nrow=nqCol, ncol=nqCol)
-      for (i in (1: n)) {
-        mat = norm_tk[i] * (X_centered[i,] %*% t(X_centered[i,]))
-        sd_k = sd_k + mat
+      
+      if(nqCol == 1){
+        X_centered = apply(Xq, 1, function(i) i - mean_k)
+        sd_k = 0
+        for (i in (1: n)) {
+          mat = norm_tk[i] * (t(X_centered[i]) %*% X_centered[i])
+          sd_k = sd_k + mat
+        }
       }
+      else{
+        X_centered = t(apply(Xq, 1, function(i) i - mean_k))
+        
+        sd_k = matrix(0, nrow=nqCol, ncol=nqCol)
+        for (i in (1: n)) {
+          mat = norm_tk[i] * (X_centered[i,] %*% t(X_centered[i,]))
+          sd_k = sd_k + mat
+        }
+        if(det(sd_k) < 1e-300){
+          stop("Non invertible matrix")
+          #sd_k = diag(rep(0.01,nqCol))
+        }
+      }
+     
       #if (det(sd_k) < 1e-4) {
       #  sd_k = diag(rep(0.01,nqCol))
       #}
       
-      if(det(sd_k) < 1e-300){
-        stop("Non invertible matrix")
-        #sd_k = diag(rep(0.01,nqCol))
-      }
+      
       theta[[k]]$mean = mean_k
       theta[[k]]$sd = sd_k
     }
@@ -201,6 +216,7 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
       best_theta = NULL
       succInit = 0
       iter = 0
+      nbErrors = 0
       if (K == 1) {
         Z <- matrix(1, nrow=nrow(Xq), ncol=1)
         best_theta = M_step(Xc,Xq, Z)
@@ -208,7 +224,7 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
         best_em = list(likelihood= best_likelihood, Z=Z, theta= best_theta)
         
       }else {
-        nbErrors = 0
+        
         while((succInit < nbInit) && (iter < 2*nbInit || is.null(best_theta)) && nbErrors < 10){
           iter = iter + 1
           
@@ -223,9 +239,7 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
               succInit = succInit+1
               nbErrors = nbErrors - 1
           }, error = function(error_condition){
-            
-            print(nbErrors)
-            print("it is here")
+            print(error_condition)
           })
         }
       }
