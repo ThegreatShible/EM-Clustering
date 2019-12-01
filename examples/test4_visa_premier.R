@@ -65,15 +65,70 @@ summary(data_continuous)
 source("./src/em.R")
 
 # Clustering with cartevp
-X = cbind(data_categ, data_continuous)
-# Clustering without cartevp variable
-X$cartevp = NULL
-X$aveparfi = NULL
-X$nbeparlo = NULL
-X$mteparlo = NULL
-X$nbeparte = NULL
+V = cbind(data_categ, data_continuous)
+dep = V[,"departem"]
+dep[is.na(dep)] = 31
 
-clusty = clust(X, 1:6, 10, "kmeans", 0.1)
+V[,"departem"] = as.factor(dep)
+V[, "ptvente"] = as.factor(V[, "ptvente"])
+
+# Clustering without cartevp variable
+V$engageml = NULL
+
+
+V <-  V[-2,]
+V <- V[!V$avtscpte == 6009132,]
+V <- V[!V$avtscpte == 9299466,]
+V <- V[!V$avtscpte == 3530191,]
+V <-  V[!V$avtscpte == 1945469,]
+V <- V[!V$avtscpte == 1879699,]
+V <- V[!V$avtscpte == 2871625,]
+V <- V[!V$avtscpte == 2297333,]
+V <- V[!V$avtscpte == 2139492 ,]
+num = unlist(lapply(V, is.numeric))
+Vq = as.data.frame(V[,num])
+
+
+
+V$cartevp = NULL
+V$aveparfi = NULL
+V$nbeparlo = NULL
+V$mteparlo = NULL
+V$nbeparte = NULL
+V$codeqlt = NULL
+V$mtrejet = NULL
+V$endette = NULL
+V$mteparmo = NULL
+#V$mtvie = NULL
+V[, "mteparte"] = NULL
+#V$mteparlt = NULL
+#V$moycred3 = NULL
+#V$nbcbptar = NULL
+#V$nbcb = NULL
+#V$nbeparlt = NULL
+#V$nbcptvue = NULL
+
+
+#V$mtfactur = NULL
+#V$nbvie  = NULL
+#V$nbeparmo = NULL
+#V$nblivret = NULL
+#V$engagemc = NULL
+
+#V$engagemt  = NULL
+#V$agemvt = NULL
+#V$moycredi = NULL
+#V$age= NULL
+
+
+
+Vq = as.data.frame(V[,num])
+clusty = clust(V, 2:6, 4, "kmeans", 0.1)
 plot_result(clusty)
+
+library(mixtClust)
+mixmodCluster(V, nbClust=2:7)
+
+
 
 
