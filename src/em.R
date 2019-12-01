@@ -135,6 +135,12 @@ one_hot <- function(x) {
 M_step <- function(Xc, Xq, Z, model){
   
   # Temporary : To be moved to VVV model
+  tryCatch({
+    
+    
+    
+    
+  
   K = ncol(Z)
   n = nrow(Xc)
   nqCol = ncol(Xq)
@@ -165,7 +171,7 @@ M_step <- function(Xc, Xq, Z, model){
           sd_k = sd_k + mat
         }
         if(det(sd_k) < 1e-300){
-          stop("Non invertible matrix")
+          stop("Non invertible matrix in M_step")
           #sd_k = diag(rep(0.01,nqCol))
         }
       }
@@ -185,10 +191,13 @@ M_step <- function(Xc, Xq, Z, model){
     theta[[k]]$p = pk
   }
   return(theta)
+  }, error = function(error_condition){
+    return (NULL)
+  })
 }
 
 
-clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verbose=T){
+clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, nbIterations =30, verbose=T){
   models = c("VVV")
   if(initMethod != "kmeans" && initMethod != "random")
       stop("Wrong initMethod: must be either kmeans or random ")
@@ -217,33 +226,44 @@ clust <- function(X, nbClust,  nbInit=5, initMethod="kmeans", epsilon= 0.1, verb
       succInit = 0
       iter = 0
       nbErrors = 0
-      if (K == 1) {
-        Z <- matrix(1, nrow=nrow(Xq), ncol=1)
-        best_theta = M_step(Xc,Xq, Z)
-        best_likelihood = process_likelihood2(Xc, Xq, best_theta)
-        best_em = list(likelihood= best_likelihood, Z=Z, theta= best_theta)
+      
         
-      }else {
-        
-        while((succInit < nbInit) && (iter < 2*nbInit || is.null(best_theta)) && nbErrors < 10){
+        while((succInit < nbInit) && (iter < 2*nbInit || is.null(best_theta)) && nbErrors < 20){
           iter = iter + 1
+          if (K == 1) {
+            Z <- matrix(1, nrow=nrow(Xq), ncol=1)
+            best_theta = M_step(Xc,Xq, Z)
+            if(!is.null(best_theta)){
+              best_likelihood = process_likelihood2(Xc, Xq, best_theta)
+              best_em = list(likelihood= best_likelihood, Z=Z, theta= best_theta)
+            }else {
+              nbErrors = nbErrors+1
+              next
+            }
+            
+            
+          }else {
           
-          tryCatch({
-            nbErrors = nbErrors + 1
+  
             theta_0 = init_theta(Xc,Xq,K=K,modalities = modalities,initMethod=initMethod)
-              em = EM(Xc, Xq, theta_0, model, epsilon)
+            if(is.null(theta_0)){
+              nbErrors = nbErrors + 1
+              next
+            }
+              em = EM(Xc, Xq, theta_0, model, epsilon, nbIterations)
+              if(em$likelihood == -Inf){
+                nbErrors = nbErrors + 1
+                next
+              }
               if(em$likelihood > best_likelihood){
                 best_likelihood = em$likelihood
                 best_em = em
               }
-              succInit = succInit+1
-              nbErrors = nbErrors - 1
-          }, error = function(error_condition){
-            print(error_condition)
-          })
-        }
+              
+          }
+          succInit = succInit+1
       }
-      if(nbErrors == 10)
+      if(nbErrors == 20 && best_likelihood ==-Inf)
         stop("Can't continue execution : Non invertible matrix")
       bic = BIC(Xq,Xc, model, best_likelihood,K, length(modalities))
       icl = ICL(bic, best_em$Z)
@@ -330,6 +350,9 @@ kmeans_init <- function(Xc, Xq,K, modalities, theta) {
     km <- kmeans(Xq, centers = K, nstart = 5)
     Z = one_hot(factor(km$cluster))
     km_theta = M_step(Xc,Xq,Z)
+    if(is.null(km_theta)){
+      return (NULL)
+    }else {
     for (i in seq_along(theta)) {
       theta[[i]]$mean = unlist(km_theta[[i]]$mean)
       theta[[i]]$sd = as.matrix(km_theta[[i]]$sd)
@@ -351,6 +374,7 @@ kmeans_init <- function(Xc, Xq,K, modalities, theta) {
   }
   
   return(theta)
+  }
 }
 
 init_theta <- function(Xc, Xq, initMethod="kmeans",K, modalities ) {
@@ -404,13 +428,14 @@ init_theta <- function(Xc, Xq, initMethod="kmeans",K, modalities ) {
 
 
 
-EM <- function(Xc, Xq, theta_0, model, epsilon){
+EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
   last_likelihood = -Inf
   current_likelihood= -Inf
   theta = theta_0
   iter = 0
   best_theta = NULL
   best_likelihood = -Inf
+  it = 0
   repeat{
     last_likelihood = current_likelihood
     Z <- E_Step2(theta, Xc, Xq, model)
@@ -432,38 +457,30 @@ EM <- function(Xc, Xq, theta_0, model, epsilon){
       #}
     
     new_theta = M_step(Xc, Xq, Z, model)
-    current_likelihood = process_likelihood2(Xc, Xq,  new_theta)
-
-
-    if(current_likelihood > best_likelihood){
-      best_likelihood = current_likelihood
-      best_theta  = new_theta
-    }
-    
-    theta = new_theta
-    likelihood_diff = current_likelihood - last_likelihood
-
-    #tryCatch({
-      #if (likelihood_diff < 0){
-      #  cat("likelihood_diff: ",likelihood_diff, " current : ", current_likelihood, " last: ",last_likelihood, "\n")
-      #}
-    #}, error = function(error_condition){
-      #cat("ERROR:  current_likelihood: ",current_likelihood, " last_likelihood: ", last_likelihood, "\n")
-     # print(error_condition)
-    #  current_likelihood = -Inf
-     # break
-    #})
-      #stop(paste(c("New likelihood is inferior to previous one : Suspicious regression of ", likelihood_diff), collapse=""))
-    iter  = iter +1
-    if (abs(likelihood_diff) < epsilon)
-      break
-    if(iter >= 1000){
-      current_likelihood = best_likelihood
-      new_theta = best_theta
+    if(!is.null(new_theta)){
+      current_likelihood = process_likelihood2(Xc, Xq,  new_theta)
+      if(current_likelihood > best_likelihood){
+        best_likelihood = current_likelihood
+        best_theta  = new_theta
+        theta = new_theta
+        likelihood_diff = current_likelihood - last_likelihood
+        print(likelihood_diff)
+        if (abs(likelihood_diff) < epsilon)
+          break
+      }
+      }else{
+       current_likelihood = -Inf 
+      } 
+      
+      iter  = iter +1
+      it = it+1
+      
+   
+    if(iter >= nbIterations){
       break
     }
   }
-  res = list(likelihood= current_likelihood, Z=Z, theta= new_theta)
+  res = list(likelihood= best_likelihood, Z=Z, theta= best_theta)
   return(res)
 }
 
