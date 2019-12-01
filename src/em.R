@@ -441,15 +441,12 @@ EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
     Z <- E_Step2(theta, Xc, Xq, model)
     Z = t(apply(Z, 1, function(z) {
       if (sum(is.nan(z))>1) {
-        print("is.nan z")
         zz=runif(length(z))
         return(zz/sum(zz))
       }
       else return(z)
     }))
-    if (sum(is.nan(Z)) > 1) {
-      print("Z contains NaN")
-    }
+
     
       #plot(Xq)
       #for (t in theta) {
@@ -464,7 +461,6 @@ EM <- function(Xc, Xq, theta_0, model, epsilon,nbIterations){
         best_theta  = new_theta
         theta = new_theta
         likelihood_diff = current_likelihood - last_likelihood
-        print(likelihood_diff)
         if (abs(likelihood_diff) < epsilon)
           break
       }
@@ -495,9 +491,7 @@ process_likelihood2 <- function(Xc, Xq, thetas) {
   logdens= sweep(lfq+lfc, 2, lp, "+")
   log_fxi = apply(logdens, 1, logsum)
   log_like = sum(log_fxi)
-  if(log_like > 0){
-    print("here")
-  }
+
   return(log_like)
   
 }
